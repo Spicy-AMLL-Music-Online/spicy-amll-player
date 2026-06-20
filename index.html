@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Spicy AMLL Player — Synchronized Apple Music Lyrics</title>
+  <meta name="description" content="Spicy AMLL Player — Experience synchronized Apple Music lyrics with beautiful, high-fidelity animations. Stream, upload, and download TTML lyrics online.">
+
+  <!-- Fonts (Player fonts + Outfit for title only) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&family=Vazirmatn:wght@400;500;600;700;800;900&family=Outfit:wght@700;900&display=swap"
+    rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/upload.css">
+
+  <!-- Favicon & Icons -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon.png">
+</head>
+
+<body>
+  <!-- Premium Update Cache Detector -->
+  <script>
+    (function() {
+      import('./js/router.js')
+        .then(function(m) {
+          if (!m.findTrackInPlaylist) {
+            showCacheModal();
+          }
+        })
+        .catch(function(e) {
+          showCacheModal();
+        });
+
+      window.clearCacheAndReload = async function() {
+        const btn = document.querySelector('.spicy-update-btn');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Clearing Cache...';
+        }
+
+        // 1. Clear Cache Storage API
+        if ('caches' in window) {
+          try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+          } catch (e) {
+            console.error('Failed to clear Cache Storage:', e);
+          }
+        }
+
+        // 2. Unregister Service Workers
+        if ('serviceWorker' in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(r => r.unregister()));
+          } catch (e) {
+            console.error('Failed to unregister Service Worker:', e);
+          }
+        }
+
+        // 3. Force reload with cache-busting timestamp
+        const url = new URL(window.location.href);
+        url.searchParams.set('cb', Date.now());
+        window.location.href = url.toString();
+      };
+
+      function showCacheModal() {
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes spicyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes spicyScaleUp {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+          .spicy-update-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            z-index: 9999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: spicyFadeIn 0.3s ease forwards;
+          }
+          .spicy-update-box {
+            background: rgba(30, 30, 30, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px 30px;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            animation: spicyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+          .spicy-update-logo { font-size: 56px; margin-bottom: 20px; }
+          .spicy-update-title {
+            font-size: 1.6rem; font-weight: 700; margin: 0 0 12px 0;
+            background: linear-gradient(180deg, #ffffff 0%, #a0a0a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          .spicy-update-desc {
+            font-size: 0.95rem; color: rgba(255, 255, 255, 0.65);
+            line-height: 1.5; margin: 0 0 25px 0;
+          }
+          .spicy-update-btn {
+            background: linear-gradient(135deg, #fa243c 0%, #ff2d55 100%);
+            color: white; border: none;
+            padding: 14px 28px; border-radius: 14px;
+            font-weight: 600; font-size: 0.95rem;
+            cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(250, 36, 60, 0.4);
+          }
+          .spicy-update-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(250, 36, 60, 0.55);
+          }
+          .spicy-update-dismiss {
+            background: transparent; color: rgba(255, 255, 255, 0.45);
+            border: none; padding: 10px; margin-top: 10px;
+            font-size: 0.85rem; cursor: pointer;
+            text-decoration: underline; width: 100%;
+            transition: color 0.2s;
+          }
+          .spicy-update-dismiss:hover { color: #ffffff; }
+        `;
+        document.head.appendChild(style);
+
+        const modal = document.createElement('div');
+        modal.className = 'spicy-update-modal';
+        modal.id = 'spicy-cache-detector-modal';
+        modal.innerHTML = `
+          <div class="spicy-update-box">
+            <div class="spicy-update-logo">🌶️</div>
+            <h2 class="spicy-update-title">Application Updated!</h2>
+            <p class="spicy-update-desc">
+              A premium new update has been installed! To apply these changes and prevent playlist errors, please clear your browser cache or perform a hard reload.
+              <br><br>
+              <strong>Shortcut:</strong> Press <code>Ctrl + F5</code> (Windows) or <code>Cmd + Shift + R</code> (Mac).
+            </p>
+            <button class="spicy-update-btn" onclick="clearCacheAndReload()">Clear Cache & Reload</button>
+            <button class="spicy-update-dismiss" onclick="document.getElementById('spicy-cache-detector-modal').remove()">Dismiss</button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+    })();
+  </script>
+
+  <div class="am-layout">
+    <!-- Sidebar Backdrop for Mobile -->
+    <div class="am-sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ═══ Sidebar ═══ -->
+    <nav class="am-sidebar">
+      <div class="am-sidebar-brand">
+        <img src="favicon.svg" class="am-sidebar-logo" alt="🌶️">
+        <span class="am-sidebar-title">Spicy AMLL Player</span>
+        <button class="am-sidebar-close-btn" id="sidebar-close" aria-label="Close Sidebar">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="am-sidebar-section">
+        <ul class="am-sidebar-nav">
+          <li class="am-nav-item am-nav-active" data-page="listen">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z">
+              </path>
+            </svg>
+            <span>Browse</span>
+          </li>
+          <li class="am-nav-item" data-page="download-ttml">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            <span>Download TTML</span>
+          </li>
+          <li class="am-nav-item" data-page="download-song">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2zm-1 14.5v-5h-2.5L12 7.5l3.5 4H13v5h-2z"/>
+            </svg>
+            <span>Download Song</span>
+          </li>
+          <li class="am-nav-item" data-page="upload">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+            <span>Upload</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="am-sidebar-section">
+        <h3 class="am-section-label">Library</h3>
+        <ul class="am-sidebar-nav">
+          <li class="am-nav-item" data-page="recent">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+            </svg>
+            <span>Recently Listened Tracks</span>
+          </li>
+          <li class="am-nav-item" data-page="songs">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
+            </svg>
+            <span>Favorite Songs</span>
+          </li>
+          <li class="am-nav-item" data-page="playlists">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 10h12v2H4v-2zm0-4h12v2H4V6zm0 8h8v2H4v-2zm10 0v6l5-3-5-3z" />
+            </svg>
+            <span>Playlists</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="am-sidebar-footer">
+        <p>A premium UNOFFICIAL remake of <a href="https://github.com/Spikerko/spicy-lyrics" target="_blank">Spicy
+            Lyrics</a></p>
+      </div>
+    </nav>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="am-main">
+      <!-- Mobile Header Sticky Bar -->
+      <header class="am-mobile-header">
+        <button id="sidebar-toggle" class="am-sidebar-toggle-btn" aria-label="Open Sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="am-mobile-brand">
+          <img src="favicon.svg" class="am-mobile-logo" alt="🌶️">
+          <span class="am-mobile-title">Spicy AMLL</span>
+        </div>
+        <div style="width: 40px;"></div> <!-- Spacer to balance layout -->
+      </header>
+
+      <!-- Subtle animated background -->
+      <div class="am-bg-glow">
+        <div class="am-glow am-glow-1"></div>
+        <div class="am-glow am-glow-2"></div>
+        <div class="am-glow am-glow-3"></div>
+      </div>
+
+      <div class="am-content">
+        <!-- ── Browse Page (Main) ── -->
+        <div id="page-listen" class="am-page active">
+          <!-- Hero Section -->
+          <div class="am-hero">
+            <div class="am-hero-icon" style="background: linear-gradient(135deg, #fa243c 0%, #ff2d55 100%);">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            </div>
+            <div class="am-hero-text">
+              <h1 class="am-hero-title">Browse</h1>
+              <p class="am-hero-subtitle">Top curated tracks from global charts, ready to stream with high-fidelity
+                visuals.</p>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="am-search-container">
+            <div class="am-search-box">
+              <svg class="am-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="catalog-search" placeholder="Artists, Songs, Lyrics, and More" autocomplete="off">
+            </div>
+          </div>
+
+          <!-- Initial Content (Trending + Albums) -->
+          <div id="listen-initial-content" class="trending-view">
+            <div class="trending-section">
+              <div class="section-header">
+                <div class="header-left">
+                  <h2 class="section-title">Trending Now</h2>
+                  <span class="section-tag">Global Charts</span>
+                </div>
+              </div>
+              <div class="trending-grid" id="trending-grid">
+                <!-- Skeletons loader injected via JS -->
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+              </div>
+            </div>
+
+            <div class="trending-section">
+              <div class="section-header">
+                <div class="header-left">
+                  <h2 class="section-title">Featured Albums</h2>
+                  <span class="section-tag">Popular Releases</span>
+                </div>
+              </div>
+              <div class="albums-grid" id="albums-grid">
+                <!-- Skeletons injected via JS -->
+                <div class="skeleton-album"></div>
+                <div class="skeleton-album"></div>
+                <div class="skeleton-album"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results Container (Hidden by default) -->
+          <div id="search-results-container" class="am-search-results hidden">
+             <div class="section-header">
+                <h2 class="section-title" id="search-results-title">Search Results</h2>
+                <button class="am-back-btn" id="search-back-btn">Back to Browse</button>
+             </div>
+             <div class="trending-grid" id="search-grid"></div>
+          </div>
+
+          <!-- Album View Container (Hidden by default) -->
+          <div id="album-view-container" class="am-album-view hidden">
+             <!-- Top details area will be injected via JS -->
+             <div id="album-header" class="am-album-header"></div>
+             
+             <div class="am-album-tracks" id="album-tracks-grid"></div>
+          </div>
+
+          <!-- Artist View Container (Hidden by default) -->
+          <div id="artist-view-container" class="am-artist-view hidden">
+             <!-- Header and Top Songs will be injected via JS -->
+             <div id="artist-view-content"></div>
+          </div>
+        </div>
+
+        <!-- ── Upload Page ── -->
+        <div id="page-upload" class="am-page">
+          <!-- Hero Section -->
+          <div class="am-hero">
+            <div class="am-hero-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+              </svg>
+            </div>
+            <div class="am-hero-text">
+              <h1 class="am-hero-title">Upload Your Music</h1>
+              <p class="am-hero-subtitle">Drop your audio files and lyrics to experience stunning synchronized visuals.
+              </p>
+            </div>
+          </div>
+
+          <!-- Upload Area -->
+          <div class="am-upload-area">
+            <div class="am-upload-cards">
+              <!-- Audio Upload Card -->
+              <div class="am-upload-card am-card-primary" id="audio-zone" title="Drop or click to upload audio">
+                <div class="am-card-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                  </svg>
+                </div>
+                <div class="am-card-info">
+                  <h3>Audio File</h3>
+                  <p class="am-card-hint">MP3, FLAC, WAV, M4A</p>
+                  <p class="zone-filename"></p>
+                </div>
+                <div class="am-card-badge">Required</div>
+                <input type="file" id="audio-input" accept="audio/*,.mp3,.flac,.wav,.ogg,.m4a,.aac" multiple>
+              </div>
+
+              <!-- TTML Upload Card -->
+              <div class="am-upload-card am-card-optional" id="ttml-zone"
+                title="Drop or click to upload lyrics (Optional)">
+                <div class="am-card-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v1.5H8V14zm0 3h6v1.5H8V17zm0-6h8v1.5H8V11z" />
+                  </svg>
+                </div>
+                <div class="am-card-info">
+                  <h3>TTML Lyrics</h3>
+                  <p class="am-card-hint">Optional — auto-fetched if not provided</p>
+                  <p class="zone-filename"></p>
+                </div>
+                <div class="am-card-badge am-badge-optional">Optional</div>
+                <input type="file" id="ttml-input" accept=".ttml,.xml" multiple>
+              </div>
+            </div>
+
+            <!-- Queue Preview -->
+            <div id="queue-preview" class="am-queue-preview">
+              <div class="am-queue-header">
+                <h4>Up Next</h4>
+                <span id="queue-count" class="am-queue-count">0 tracks</span>
+                <button id="clear-queue-btn" class="am-clear-btn">Clear All</button>
+              </div>
+              <div class="queue-list" id="queue-list">
+                <!-- Items added via JS -->
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="am-actions">
+              <button id="start-button" class="am-start-btn" disabled>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                <span>Start Playback</span>
+              </button>
+              <div id="upload-error" class="am-error-msg"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Recently Listened Page ── -->
+        <div id="page-recent" class="am-page">
+          <div class="am-hero">
+            <div class="am-hero-icon" style="background: linear-gradient(135deg, #5856d6 0%, #007aff 100%);">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+              </svg>
+            </div>
+            <div class="am-hero-text">
+              <h1 class="am-hero-title">Recently Listened</h1>
+              <p class="am-hero-subtitle">Tracks you've recently experienced in high-fidelity.</p>
+            </div>
+          </div>
+          <div class="trending-grid" id="recent-tracks-grid">
+             <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- ── Favorite Songs Page ── -->
+        <div id="page-songs" class="am-page">
+          <div class="am-hero">
+            <div class="am-hero-icon" style="background: linear-gradient(135deg, #ff2d55 0%, #ff3b30 100%);">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            </div>
+            <div class="am-hero-text">
+              <h1 class="am-hero-title">Favorite Songs</h1>
+              <p class="am-hero-subtitle">All your loved tracks in one place.</p>
+            </div>
+          </div>
+          <div class="trending-grid" id="favorite-tracks-grid">
+             <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- ── Playlists Page ── -->
+        <div id="page-playlists" class="am-page">
+          <div class="am-hero">
+            <div class="am-hero-icon" style="background: linear-gradient(135deg, #af52de 0%, #d633ff 100%);">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 10h12v2H4v-2zm0-4h12v2H4V6zm0 8h8v2H4v-2zm10 0v6l5-3-5-3z" />
+              </svg>
+            </div>
+            <div class="am-hero-text">
+              <h1 class="am-hero-title">My Playlists</h1>
+              <div class="am-hero-actions" style="margin-top: 15px;">
+                <button class="am-start-btn" id="create-playlist-btn">Create New Playlist</button>
+              </div>
+            </div>
+          </div>
+          <div class="playlists-grid" id="playlists-grid">
+             <!-- Injected via JS -->
+          </div>
+          <div id="playlist-detail" class="am-playlist-detail hidden">
+             <div class="section-header">
+                <h2 class="section-title" id="playlist-detail-title">Playlist Name</h2>
+                <button class="am-back-btn" id="playlist-back-btn">Back to Playlists</button>
+             </div>
+             <div class="playlist-tracks-grid" id="playlist-tracks-grid"></div>
+          </div>
+        </div>
+
+        <!-- ── Download TTML Page ── -->
+        <div id="page-download-ttml" class="am-page">
+          <div class="download-bg-glow"></div>
+          
+          <div class="premium-downloader-container">
+            <div class="glass-card premium-card">
+              <div class="downloader-header">
+                <div class="header-icon-wrapper">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                  </svg>
+                </div>
+                <h1 class="premium-title">TTML Downloader</h1>
+                <p class="premium-subtitle">Enter an Apple Music Song ID to extract high-fidelity synchronized lyrics.</p>
+              </div>
+
+              <div class="premium-input-group">
+                <div class="premium-search-box">
+                  <input type="text" id="ttml-song-id" placeholder="Paste Song ID (e.g. 1738734057)" autocomplete="off">
+                  <button id="fetch-ttml-btn" class="premium-btn primary">
+                    <span class="btn-text">Fetch Lyrics</span>
+                    <div class="btn-loader hidden"></div>
+                  </button>
+                </div>
+              </div>
+
+              <div id="ttml-result-preview" class="premium-result-view hidden">
+                <div class="result-backdrop"></div>
+                <div class="song-identity">
+                  <div class="art-pulse-wrapper">
+                     <img id="ttml-preview-art" src="" alt="Album Art">
+                  </div>
+                  <div class="song-details">
+                    <h2 id="ttml-preview-name">Song Name</h2>
+                    <p id="ttml-preview-artist">Artist Name</p>
+                    <div class="badge">Apple Music Lossless</div>
+                  </div>
+                </div>
+
+                <div class="code-stage">
+                  <div class="stage-header">
+                    <div class="dots"><span></span><span></span><span></span></div>
+                    <span class="stage-label">TTML SOURCE</span>
+                    <button id="download-ttml-file-btn" class="premium-btn secondary" disabled>
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                      Quick Download
+                    </button>
+                  </div>
+                  <div class="code-viewport">
+                    <pre id="ttml-code-block"></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div id="ttml-status" class="status-indicator"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Download Song Page ── -->
+        <div id="page-download-song" class="am-page">
+          <div class="download-bg-glow"></div>
+          
+          <div class="premium-downloader-container">
+            <div class="glass-card premium-card">
+              <div class="downloader-header">
+                <div class="header-icon-wrapper" style="background: linear-gradient(135deg, #FF2D55 0%, #fa243c 100%);">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2zm-1 14.5v-5h-2.5L12 7.5l3.5 4H13v5h-2z"/>
+                  </svg>
+                </div>
+                <h1 class="premium-title">Audio Downloader</h1>
+                <p class="premium-subtitle">Enter an Apple Music Song ID or Search Term to download the audio track.</p>
+              </div>
+
+              <div class="premium-input-group">
+                <div class="premium-search-box">
+                  <input type="text" id="dl-song-input" placeholder="Paste Song ID or Search Term" autocomplete="off">
+                  <select id="dl-song-format" class="premium-btn format-select" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); color: white; border: 1px solid rgba(255, 255, 255, 0.2); padding: 0 15px; border-radius: 8px; margin-right: 10px; cursor: pointer; outline: none; font-family: inherit;">
+                    <option value="m4a">M4A (Original)</option>
+                    <option value="mp3">MP3</option>
+                    <option value="flac">FLAC</option>
+                  </select>
+                  <button id="fetch-song-btn" class="premium-btn primary">
+                    <span class="btn-text">Download</span>
+                    <div class="btn-loader hidden"></div>
+                  </button>
+                </div>
+                <div id="dl-search-results" class="dl-search-results hidden"></div>
+              </div>
+
+              <div id="dl-song-status" class="status-indicator"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Song Context Menu -->
+  <div id="song-context-menu" class="am-context-menu hidden">
+    <div class="context-menu-item" id="ctx-play">Play Now</div>
+    <div class="context-menu-item" id="ctx-add-playlist">Add to Playlist...</div>
+    <div class="context-menu-item" id="ctx-view-album">View Entire Album</div>
+    <div class="context-menu-item" id="ctx-view-artist">View Artist</div>
+    <div class="context-menu-item" id="ctx-favorite">Add to Favorites</div>
+    <div class="context-menu-item" id="ctx-copy-id">Copy Song ID</div>
+  </div>
+
+  <!-- Playlist Selection Modal -->
+  <div id="playlist-select-modal" class="am-modal hidden">
+     <div class="am-modal-content">
+        <h3>Add to Playlist</h3>
+        <div id="playlist-options-list"></div>
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <button class="am-start-btn" id="modal-create-playlist-btn" style="flex:1;padding:8px;font-size:0.9rem;">Create New</button>
+          <button class="am-text-btn" id="close-playlist-modal" style="flex:1;">Cancel</button>
+        </div>
+     </div>
+  </div>
+
+  <!-- Mobile Sidebar Controls -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sidebar = document.querySelector('.am-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      const toggleBtn = document.getElementById('sidebar-toggle');
+      const closeBtn = document.getElementById('sidebar-close');
+
+      function openSidebar() {
+        if (sidebar && backdrop) {
+          sidebar.classList.add('open');
+          backdrop.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function closeSidebar() {
+        if (sidebar && backdrop) {
+          sidebar.classList.remove('open');
+          backdrop.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      }
+
+      if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+      if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+      if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+      // Close sidebar when clicking any navigation link (on mobile)
+      const navItems = document.querySelectorAll('.am-sidebar-nav .am-nav-item');
+      navItems.forEach(item => {
+        item.addEventListener('click', () => {
+          if (window.innerWidth <= 900) {
+            closeSidebar();
+          }
+        });
+      });
+    });
+  </script>
+
+  <!-- Global Preparation Overlay -->
+  <div id="prep-overlay" class="prep-overlay">
+    <div class="prep-content">
+      <div class="prep-spinner"></div>
+      <h2 id="prep-status">Preparing Track...</h2>
+      <p id="prep-subtext">Fetching audio and metadata from secure servers</p>
+    </div>
+  </div>
+  </div>
+
+  <script type="module" src="js/upload.js"></script>
+  <script type="module" src="js/song-downloader.js"></script>
+</body>
+
+</html>

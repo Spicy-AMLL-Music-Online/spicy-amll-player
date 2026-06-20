@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════
+   Spicy AMLL Player WEB — Dynamic Background
+   Enhanced animated backgrounds
+   ═══════════════════════════════════════════════ */
+
+.spicy-dynamic-bg {
+  height: 100%;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  transform-origin: center center;
+  filter: saturate(2.5) brightness(0.65);
+  z-index: 0;
+  transition: filter 1s ease;
+  will-change: transform, filter;
+  backface-visibility: hidden;
+}
+
+
+.spicy-dynamic-bg.KawarpBackground {
+  filter: saturate(2.5) brightness(0.45);
+}
+
+.spicy-dynamic-bg.LegacyBackground {
+  filter: saturate(1.8) brightness(0.7);
+}
+
+.spicy-dynamic-bg.LegacyBackground .Back,
+.spicy-dynamic-bg.LegacyBackground .BackCenter,
+.spicy-dynamic-bg.LegacyBackground .Front {
+  --PlaceholderHueShift: 0deg;
+  animation: bgAnim 45s linear infinite;
+  border-radius: 100em;
+  position: absolute;
+  width: 200%;
+  height: 100%;
+  filter: blur(15px);
+  transition: background 1.5s ease;
+  will-change: transform;
+}
+
+
+.spicy-dynamic-bg.LegacyBackground .Back:not(.NoEffect),
+.spicy-dynamic-bg.LegacyBackground .BackCenter:not(.NoEffect),
+.spicy-dynamic-bg.LegacyBackground .Front:not(.NoEffect) {
+  filter: hue-rotate(var(--PlaceholderHueShift)) blur(40px);
+}
+
+.spicy-dynamic-bg.LegacyBackground .Front {
+  right: 0;
+  top: 0;
+  z-index: 2;
+}
+
+.spicy-dynamic-bg.LegacyBackground .Back {
+  animation-direction: reverse;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.spicy-dynamic-bg.LegacyBackground .BackCenter {
+  animation-direction: reverse;
+  right: -50%;
+  top: -20%;
+  width: 300%;
+  z-index: 0;
+}
+
+/* Static/Image Background */
+#SpicyLyricsPage .spicy-dynamic-bg.StaticBackground {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.5) saturate(1.25);
+  scale: 1;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+#SpicyLyricsPage .spicy-dynamic-bg.StaticBackground.Hidden {
+  opacity: 0;
+}
+
+/* Color Background */
+#SpicyLyricsPage .spicy-dynamic-bg.ColorBackground {
+  background-color: rgba(var(--MinContrastColor, 30, 30, 30));
+  transition: background-color 1.5s;
+  filter: none;
+}
+
+#SpicyLyricsPage .spicy-dynamic-bg.ColorBackground::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 90%;
+  background-color: rgba(var(--HighContrastColor, 10, 10, 10));
+  mask-image: linear-gradient(to top, transparent, black 145%);
+  z-index: 1;
+  transition: background-color 1.5s;
+}
+
+#SpicyLyricsPage .spicy-dynamic-bg.ColorBackground::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  background: linear-gradient(to top, rgb(0, 0, 0), transparent);
+  z-index: 5;
+}
+
+/* ── Animated Art Background (blurred behind) ── */
+#SpicyLyricsPage .spicy-dynamic-bg.AnimatedArtBackground {
+  filter: saturate(1.6) brightness(0.45) blur(40px);
+  transition: filter 1s ease, opacity 1s ease;
+  transform: scale(1.1);
+  will-change: transform, filter;
+}
+
+
+#SpicyLyricsPage .spicy-dynamic-bg.AnimatedArtBackground video {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  object-fit: cover;
+}
+
+.spicy-dynamic-bg.Hidden {
+  opacity: 0;
+}

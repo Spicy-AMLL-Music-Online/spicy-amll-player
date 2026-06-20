@@ -1,0 +1,2737 @@
+/* ═══════════════════════════════════════════════
+   Spicy AMLL Player WEB — Player Page
+   Ported from ContentBox.css + default.css
+   ═══════════════════════════════════════════════ */
+
+/* ── Top Right Controls ── */
+
+
+.airplay-button {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.airplay-button:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.airplay-button img {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.top-volume-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-volume-icon {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+}
+
+.top-volume-slider {
+  width: 120px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.top-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.top-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.top-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+}
+
+
+
+.lyrics-button {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.lyrics-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.lyrics-button.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lyrics-button img {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+
+/* ── Page Container ── */
+#SpicyLyricsPage {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  container-type: size;
+  position: relative;
+  left: 0;
+  top: 0;
+  font-weight: 700;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 1;
+  font-family: var(--spicy-font-family);
+  --ArtworkGlowColor: 255, 255, 255;
+}
+
+/* Hide desktop-only controls on mobile */
+
+
+/* ── Content Box ── */
+#SpicyLyricsPage .ContentBox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  --default-font-size: clamp(0.5rem, calc(1cqw * 3), 2.4rem);
+  --Compact_NowBarHeight: 15cqh;
+  transition: opacity 0.34s;
+}
+
+/* ── NowBar ── */
+#SpicyLyricsPage .ContentBox .NowBar {
+  scale: 0.8;
+  --NowBarVPadding: 4cqh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: var(--NowBarLeftSpacing);
+  top: 0;
+  height: 100cqh;
+  z-index: 10;
+  container-type: size;
+  width: var(--NowBarWidth);
+  flex-shrink: 0;
+  padding: var(--NowBarVPadding) 0;
+}
+
+.Grabber {
+  width: 40px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  margin-bottom: 1.5cqh;
+  flex-shrink: 0;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+}
+
+
+
+
+/* ── MediaBox (Album Art) ── */
+#SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox {
+  --ArtworkBrightness: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 2.5cqh;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox .MediaImageContainer {
+  border-radius: 1.5cqh;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.animated-art-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  z-index: 2;
+}
+
+.animated-art-video.loaded {
+  opacity: 1;
+}
+
+/* ── Metadata Row ── */
+.MetadataRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 1.5cqh;
+  gap: 15px;
+}
+
+.MetadataActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .SongName {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  container-type: inline-size;
+  width: 100%;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .SongName span {
+  display: inline-block;
+  white-space: nowrap;
+  animation: Marquee_SongName 5s linear infinite alternate;
+  will-change: transform;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .SongName.rtl {
+  font-weight: 1000 !important;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .Artists {
+  font-weight: 500;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .Artists.rtl {
+  font-weight: 1000 !important;
+}
+
+@media (max-width: 768px) {
+  #btn-queue {
+    width: 52px;
+    height: 32px;
+  }
+}
+
+.queue-button,
+.options-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+  border: none;
+  cursor: pointer;
+  background: none;
+  /* Removed background */
+}
+
+.queue-button:hover,
+.options-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.queue-button svg,
+.options-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.queue-button svg {}
+
+/* ── Queue Panel (Apple Music Style) ── */
+.QueuePanel {
+  position: fixed;
+  right: -400px;
+  top: 0;
+  width: 380px;
+  height: 100%;
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  z-index: 1000;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.QueuePanel.active {
+  transform: translateX(-400px);
+}
+
+.QueueHeader {
+  padding: 30px 24px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.QueueHeader h3 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.QueueActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#queue-clear {
+  background: transparent;
+  border: none;
+  color: #fa243c;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+#queue-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+}
+
+.QueueList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 40px;
+  scrollbar-width: none;
+}
+
+.QueueList::-webkit-scrollbar {
+  display: none;
+}
+
+.player-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.player-queue-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.player-queue-item.active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.player-queue-item.dragging {
+  opacity: 0.5;
+  background: var(--apple-red-glass);
+  transform: scale(0.98);
+}
+
+.player-queue-item .drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.player-queue-item .drag-handle:active {
+  cursor: grabbing;
+}
+
+.pq-art {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  background-size: cover;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pq-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.pq-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pq-artist {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Drop Zone Overlay ── */
+.drop-zone-overlay {
+  position: fixed;
+  inset: 10px;
+  background: rgba(250, 36, 60, 0.1);
+  border: 3px dashed rgba(250, 36, 60, 0.5);
+  border-radius: 30px;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.drop-zone-overlay.active {
+  opacity: 1;
+}
+
+.drop-zone-content {
+  text-align: center;
+  color: #fff;
+}
+
+.drop-zone-content svg {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  fill: #fa243c;
+}
+
+/* ── Mobile Responsive (Queue Bottom Sheet) ── */
+@media (max-width: 768px) {
+  .QueuePanel {
+    right: 0;
+    top: auto;
+    bottom: -80%;
+    width: 100%;
+    height: 80%;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px 30px 0 0;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .QueuePanel.active {
+    transform: translateY(-100%);
+  }
+}
+
+/* ── Progress Bar ── */
+.NowBarProgress {
+  width: 100%;
+  margin-bottom: 1.2cqh;
+}
+
+.progress-bar-wrapper {
+  width: 100%;
+  height: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  position: relative;
+  margin-bottom: 8px;
+  transition: height 0.2s, transform 0.2s;
+}
+
+.progress-bar-wrapper:hover {
+  height: 10px;
+  transform: scaleX(1.02);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.4);
+  width: 0%;
+  position: relative;
+}
+
+.progress-bar-fill::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.progress-bar-wrapper:hover .progress-bar-fill::after {
+  transform: translateY(-50%) scale(1);
+}
+
+.progress-times {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.progress-time {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Quality Badge ── */
+.quality-badge-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 2cqh;
+}
+
+.quality-badge {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.05em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+}
+
+/* ── Controls Area ── */
+.NowBarControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 3cqh;
+}
+
+.playback-control {
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playback-control:hover {
+  transform: scale(1.1);
+}
+
+.playback-control:active {
+  transform: scale(0.9);
+}
+
+.playback-control img {
+  width: 42px;
+  height: 42px;
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.playback-control.play-pause img {
+  width: 41px;
+  height: 44px;
+  opacity: 1;
+}
+
+.playback-control.shuffle img {
+  width: 37px;
+  height: 34px;
+  opacity: 0.6;
+}
+
+.playback-control.repeat img {
+  width: 42px;
+  height: 34px;
+  opacity: 0.6;
+}
+
+.playback-control.active img {
+  opacity: 1;
+}
+
+/* ── Volume Area ── */
+.VolumeArea {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.volume-side-icon {
+  width: 38px;
+  height: 38px;
+  filter: brightness(0) invert(1);
+  opacity: 0.5;
+}
+
+.volume-slider-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.volume-slider {
+  width: 100%;
+  height: 5px;
+  appearance: none;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%, rgba(255, 255, 255, 0.15) 100%);
+  border-radius: 10px;
+  outline: none;
+  transition: height 0.2s, transform 0.2s;
+}
+
+.volume-slider:hover {
+  height: 9px;
+  transform: scaleX(1.02);
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: scale(0);
+  transition: transform 0.2s;
+}
+
+.volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1);
+}
+
+/* ── Loader ── */
+.SpicyLoader {
+  --bg-color: #000;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: z-index 0.34s;
+  background-color: var(--bg-color);
+  animation: SpicyLoader_FadeOut 0.34s forwards;
+  z-index: -1;
+}
+
+.SpicyLoader.active {
+  z-index: 105;
+  animation: SpicyLoader_FadeIn 0.34s forwards;
+}
+
+/* ── Back button ── */
+.back-button {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(21, 22, 23, 0.72);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 1;
+  /* Make visible by default or keep hover effect */
+  transition: opacity 0.3s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: none;
+  backdrop-filter: none;
+}
+
+.back-button img {
+  width: 10px;
+  height: auto;
+}
+
+.back-button svg {
+  width: 18px;
+  height: 18px;
+  fill: rgba(255, 255, 255, 0.7);
+}
+
+#SpicyLyricsPage:hover .back-button {
+  opacity: 0.6;
+}
+
+.back-button:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+  background: rgba(21, 22, 23, 0.88);
+}
+
+/* ── Lyrics Loading Indicator ── */
+.lyrics-loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.lyrics-loading-indicator.active {
+  opacity: 1;
+}
+
+.lyrics-loading-indicator .loading-spinner,
+.SpicyLoader .loading-spinner {
+  display: none;
+  /* Hide old spinner */
+}
+
+/* ── Bounce Loader (Reference Port) ── */
+.SlBounceLoader {
+  width: 40px;
+  aspect-ratio: 1;
+  --c: no-repeat linear-gradient(rgba(255, 255, 255, 0.7) 0 0);
+  background:
+    var(--c) 0 0,
+    var(--c) 0 100%,
+    var(--c) 50% 0,
+    var(--c) 50% 100%,
+    var(--c) 100% 0,
+    var(--c) 100% 100%;
+  background-size: 8px 50%;
+  animation: SL_bounce_bars 1s infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.SlBounceLoader:before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  top: calc(50% - 4px);
+  left: -8px;
+  animation: inherit;
+  animation-name: SL_bounce_ball;
+}
+
+@keyframes SL_bounce_bars {
+  16.67% {
+    background-size: 8px 30%, 8px 30%, 8px 50%, 8px 50%, 8px 50%, 8px 50%;
+  }
+
+  33.33% {
+    background-size: 8px 30%, 8px 30%, 8px 30%, 8px 30%, 8px 50%, 8px 50%;
+  }
+
+  50% {
+    background-size: 8px 30%, 8px 30%, 8px 30%, 8px 30%, 8px 30%, 8px 30%;
+  }
+
+  66.67% {
+    background-size: 8px 50%, 8px 50%, 8px 30%, 8px 30%, 8px 30%, 8px 30%;
+  }
+
+  83.33% {
+    background-size: 8px 50%, 8px 50%, 8px 50%, 8px 50%, 8px 30%, 8px 30%;
+  }
+}
+
+@keyframes SL_bounce_ball {
+  20% {
+    left: 0px;
+  }
+
+  40% {
+    left: calc(50% - 4px);
+  }
+
+  60% {
+    left: calc(100% - 8px);
+  }
+
+  80%,
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes SL_spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Rendering State: Hide interactive clutter for picture-perfect export */
+body.is-rendering .back-button,
+body.is-rendering .MetadataActions,
+body.is-rendering .VolumeArea,
+body.is-rendering .NowBarControls,
+body.is-rendering .playback-control.shuffle,
+body.is-rendering .playback-control.repeat {
+  display: none !important;
+}
+
+body.is-rendering,
+body.is-rendering * {
+  cursor: none !important;
+}
+
+body.is-rendering .NowBar {
+  padding-bottom: 20px;
+  /* Reduced since controls are gone */
+}
+
+.lyrics-loading-indicator .loading-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+}
+
+/* ── Settings Modal ── */
+.SpicyLyricsSettingsOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.SpicyLyricsSettingsOverlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.SpicyLyricsSettingsContainer {
+  background: rgba(24, 24, 26, 0.78);
+  width: 90%;
+  max-width: 840px;
+  height: 600px;
+  max-height: 85vh;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.96) translateY(10px);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.SpicyLyricsSettingsContainer.active {
+  transform: scale(1) translateY(0);
+}
+
+.SpicyLyricsSettingsHeader {
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.SpicyLyricsSettingsHeader span {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.SpicyLyricsSettingsHeaderClose {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.SpicyLyricsSettingsHeaderClose:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.SpicyLyricsSettingsMainBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Sidebar Styling */
+.SpicyLyricsSettingsSidebar {
+  width: 210px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.015);
+  scrollbar-width: none;
+}
+
+.SpicyLyricsSettingsSidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sl-sidebar-tab {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.sl-sidebar-tab svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.sl-sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.sl-sidebar-tab:hover svg {
+  transform: scale(1.05);
+}
+
+.sl-sidebar-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Content Area Styling */
+.SpicyLyricsSettingsContent {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.SpicyLyricsSettingsContent::-webkit-scrollbar {
+  display: none;
+}
+
+.SpicyLyricsSettingsPanel {
+  animation: slFadeIn 0.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes slFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sl-settings-group {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.38);
+  margin: 18px 0 8px 4px;
+  font-weight: 600;
+}
+
+.sl-settings-group:first-of-type {
+  margin-top: 4px;
+}
+
+.sl-settings-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.sl-settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 20px;
+}
+
+.sl-settings-row:last-child {
+  border-bottom: none;
+}
+
+.sl-settings-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.sl-settings-label {
+  font-size: 0.92rem;
+  color: #fff;
+  font-weight: 500;
+}
+
+.sl-settings-description {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.35;
+}
+
+/* ── UI Components ── */
+.sl-toggle {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 25px;
+  flex-shrink: 0;
+}
+
+.sl-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.sl-toggle span {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.08);
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sl-toggle span:before {
+  position: absolute;
+  content: "";
+  height: 19px;
+  width: 19px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+
+.sl-toggle input:checked + span {
+  background-color: #30d158;
+}
+
+.sl-toggle input:checked + span:before {
+  transform: translateX(21px);
+}
+
+.sl-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 30px 8px 12px;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 13px;
+}
+
+.sl-select:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sl-select option {
+  background: #1c1c1e;
+  color: #fff;
+}
+
+.sl-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  outline: none;
+  font-family: inherit;
+  width: 170px;
+  max-width: 100%;
+  transition: all 0.2s ease;
+}
+
+.sl-input:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sl-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 170px;
+}
+
+.sl-slider-value {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 32px;
+  text-align: right;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.sl-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+}
+
+.sl-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.sl-range-slider::-webkit-slider-thumb:active {
+  transform: scale(1.25);
+}
+
+.sl-range-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.sl-range-slider::-moz-range-thumb:active {
+  transform: scale(1.25);
+}
+
+.sl-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+.sl-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sl-btn:active {
+  transform: scale(0.97);
+}
+
+.sl-btn-accent {
+  background: rgba(48, 209, 88, 0.12);
+  border-color: rgba(48, 209, 88, 0.2);
+  color: #30d158;
+}
+
+.sl-btn-accent:hover {
+  background: rgba(48, 209, 88, 0.2);
+  border-color: rgba(48, 209, 88, 0.35);
+}
+
+/* Inline Equalizer Styling */
+.sl-eq-preset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sl-eq-preset-label {
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.sl-eq-sliders-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  height: 170px;
+  gap: 6px;
+  padding: 22px 18px 14px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.sl-eq-band-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  height: 100%;
+}
+
+.sl-eq-val-label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.45);
+  min-height: 12px;
+  font-family: monospace;
+}
+
+.sl-eq-freq-label {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+}
+
+.sl-eq-slider {
+  height: 100px;
+  width: 5px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  outline: none;
+  margin: 6px 0;
+  cursor: ns-resize;
+}
+
+.sl-eq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.sl-eq-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+/* Alignment Support */
+.sl-right-aligned #lyrics-container {
+  text-align: right;
+}
+
+.sl-simple-mode .line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3ch;
+  margin: 1.2cqw 0 !important;
+  padding: 12px 0 !important;
+  text-align: left !important;
+  width: 100% !important;
+  transform-origin: center;
+  transition: transform 0.2s ease-out;
+}
+
+.sl-simple-mode .word {
+  display: inline-block !important;
+  opacity: 0.35;
+  color: #fff;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: none;
+  font-size: inherit !important;
+  transition: opacity 0.3s ease, text-shadow 0.3s ease;
+}
+
+.sl-simple-mode .word.Active {
+  opacity: 1;
+  font-weight: 700;
+}
+
+.sl-simple-mode .letter {
+  display: inline-block !important;
+  opacity: 0.35;
+  color: #fff;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: none;
+  font-size: inherit !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.sl-simple-mode .letter.Active {
+  opacity: 1;
+}
+
+.sl-simple-mode .letterGroup {
+  display: inline-block !important;
+  white-space: normal !important;
+}
+
+.sl-simple-mode .line.Active {
+  opacity: 1;
+}
+
+.sl-simple-mode .line.Sung,
+.sl-simple-mode .line.NotSung {
+  opacity: 0.5;
+}
+
+.sl-simple-mode .word-group {
+  display: inline-block !important;
+  white-space: normal !important;
+}
+
+/* --- Provider Manager --- */
+.sl-btn-small {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 8px;
+  min-width: 28px;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.sl-btn-small:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.sl-btn-small:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.sl-btn-small.off {
+  background: rgba(255, 50, 50, 0.15);
+  color: #ff9999;
+}
+
+/* ── Romanization / Translation Toggles ── */
+.romanization-toggle,
+.translation-toggle {
+  position: fixed;
+  bottom: 50px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  z-index: 100;
+}
+
+.translation-toggle {
+  bottom: 86px;
+}
+
+.romanization-toggle:hover,
+.translation-toggle:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.romanization-toggle.active,
+.translation-toggle.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border-color: transparent;
+}
+
+/* ── Lyrics Source Badge ── */
+.lyrics-source-badge {
+  position: fixed;
+  top: 29px;
+  right: 24px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  z-index: 100;
+  pointer-events: none;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Mobile Responsive Adjustments
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Settings Mobile Revamp Overrides */
+  .SpicyLyricsSettingsContainer {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100dvh !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .SpicyLyricsSettingsMainBody {
+    flex-direction: column !important;
+  }
+  .SpicyLyricsSettingsSidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 10px 16px !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+  }
+  .SpicyLyricsSettingsSidebar::-webkit-scrollbar {
+    display: none !important;
+  }
+  .sl-sidebar-tab {
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+    font-size: 0.85rem !important;
+    flex-shrink: 0 !important;
+  }
+  .SpicyLyricsSettingsContent {
+    padding: 16px 20px !important;
+  }
+  .sl-settings-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .sl-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .sl-select {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .sl-slider-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .sl-range-slider {
+    flex: 1 !important;
+    width: auto !important;
+  }
+
+  #SpicyLyricsPage {
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #SpicyLyricsPage .ContentBox {
+    display: block;
+    height: 100%;
+    width: 100%;
+    position: relative;
+  }
+
+  /* 1. Header (NowBar top section) & Back button */
+  .back-button {
+    position: absolute !important;
+    top: env(safe-area-inset-top, 12px) !important;
+    left: 24px !important;
+    z-index: 200 !important;
+    width: 40px !important;
+    height: 40px !important;
+    margin: 0 !important;
+    opacity: 0.8 !important;
+  }
+
+  .lyrics-source-badge {
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top, 12px) + 13px) !important;
+    right: 24px !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    scale: 1 !important;
+    z-index: 100;
+    background: transparent;
+    display: block !important;
+    pointer-events: none;
+  }
+
+  .Grabber {
+    display: none !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header {
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    display: block !important;
+    pointer-events: none !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .NowBarBottomWrapper {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    pointer-events: none !important;
+    transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  }
+
+  /* Album Art in Header */
+  #SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox {
+    position: absolute !important;
+    top: calc(48px + env(safe-area-inset-top, 12px)) !important;
+    left: 24px !important;
+    width: 48px !important;
+    height: 48px !important;
+    margin-bottom: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox .MediaImageContainer {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Metadata next to art */
+  .MetadataRow {
+    position: absolute !important;
+    top: calc(48px + env(safe-area-inset-top, 12px)) !important;
+    left: 86px !important;
+    width: calc(100% - 110px) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 48px !important;
+    pointer-events: auto !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .Metadata {
+    align-items: flex-start;
+    text-align: left;
+    gap: 0px;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .SongName {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .Metadata .Artists {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.2;
+    max-width: 180px;
+  }
+
+  .MetadataActions {
+    gap: 6px;
+  }
+
+  .favorite-button {
+    display: none !important;
+    /* Hide favorite button on mobile to place settings button at the complete right */
+  }
+
+  .options-button img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Touch-blocking backdrop: prevents taps from passing through lyrics to player controls behind */
+  #SpicyLyricsPage .LyricsContainer:not(.hidden)::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: auto;
+    background: transparent;
+  }
+
+  /* 2. Lyrics Container in Middle */
+  #SpicyLyricsPage .LyricsContainer {
+    position: absolute !important;
+    display: block !important;
+    top: calc(112px + env(safe-area-inset-top, 12px)) !important;
+    bottom: 32vh !important;
+    bottom: 32dvh !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(100vh - (112px + env(safe-area-inset-top, 12px) + 32vh)) !important;
+    height: calc(100dvh - (112px + env(safe-area-inset-top, 12px) + 32dvh)) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 150 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%) !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%) !important;
+    transition: bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1), height 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  }
+
+  /* Apple Immersive Lyrics Layout Mode overrides */
+  #SpicyLyricsPage .LyricsContainer.lyrics-immersive {
+    bottom: calc(4dvh + env(safe-area-inset-bottom, 12px)) !important;
+    height: calc(91dvh - (111px + env(safe-area-inset-top, 12px) + 4dvh + env(safe-area-inset-bottom, 12px))) !important;
+  }
+
+  /* Immersive Layout: Only fade out progress, quality badge, and playback center controls */
+  #SpicyLyricsPage:has(.LyricsContainer.lyrics-immersive) .NowBarProgress,
+  #SpicyLyricsPage:has(.LyricsContainer.lyrics-immersive) .quality-badge-container,
+  #SpicyLyricsPage:has(.LyricsContainer.lyrics-immersive) .NowBarControls .playback-control.skip-back,
+  #SpicyLyricsPage:has(.LyricsContainer.lyrics-immersive) .NowBarControls .playback-control.play-pause,
+  #SpicyLyricsPage:has(.LyricsContainer.lyrics-immersive) .NowBarControls .playback-control.skip-forward {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  #SpicyLyricsPage .LyricsContainer .LyricsContent {
+    position: absolute !important;
+    display: block !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    container-type: normal !important;
+    pointer-events: auto !important;
+    transform: translateZ(0) !important;
+    will-change: transform, scroll-position !important;
+    padding: 0 28px !important;
+    text-align: left !important;
+  }
+
+  #SpicyLyricsPage .LyricsContainer .LyricsContent .SpicyLyricsScrollContainer {
+    container-type: normal !important;
+    margin-top: 0vh !important;
+    padding-top: 6dvh !important;
+    padding-bottom: 25dvh !important;
+  }
+
+  #SpicyLyricsPage .LyricsContainer .LyricsContent .line {
+    font-size: 1.85rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    padding: 14px 0 !important;
+    line-height: 1.25 !important;
+    opacity: 0.28;
+    transition: opacity 0.4s ease;
+  }
+
+  #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active {
+    opacity: 1 !important;
+  }
+
+  /* 3. Scrubber / Progress Bar Row */
+  .NowBarProgress {
+    position: absolute !important;
+    bottom: 26dvh !important;
+    left: 28px !important;
+    width: calc(100% - 56px) !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  .progress-bar-wrapper {
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    margin-bottom: 6px !important;
+  }
+
+  .progress-bar-fill {
+    background: rgba(255, 255, 255, 0.75) !important;
+  }
+
+  .progress-bar-fill::after {
+    transform: translateY(-50%) scale(1) !important;
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .progress-times {
+    margin-top: 4px !important;
+  }
+
+  .progress-time {
+    font-size: 0.75rem !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Dolby Atmos / Lossless Badge Centered Under Playback Bar */
+  .quality-badge-container {
+    display: flex !important;
+    position: absolute !important;
+    bottom: 24dvh !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    width: auto !important;
+  }
+
+  .quality-badge {
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  /* 4. Playback Controls Row */
+  .NowBarControls {
+    position: absolute !important;
+    bottom: 15dvh !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 0 48px !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    pointer-events: auto !important;
+  }
+
+  .playback-control img {
+    width: 28px !important;
+    height: 28px !important;
+    opacity: 0.85 !important;
+  }
+
+  .playback-control.play-pause img {
+    width: 48px !important;
+    height: 48px !important;
+    opacity: 1 !important;
+  }
+
+  /* Mobile Style for Shuffle and Repeat Buttons */
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .MetadataActions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .MetadataActions .playback-control.shuffle,
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .MetadataActions .playback-control.repeat {
+    display: flex !important;
+    width: 32px !important;
+    height: 32px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .MetadataActions .playback-control.shuffle img,
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .MetadataActions .playback-control.repeat img {
+    width: 22px !important;
+    height: 22px !important;
+    opacity: 0.65 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarControls {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 28px !important;
+    padding: 0 18px !important;
+    bottom: 15dvh !important;
+    top: auto !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarControls .playback-control.shuffle,
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarControls .playback-control.repeat {
+    display: none !important;
+  }
+
+  /* 5. Volume Slider Row — flows inside flex wrapper */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .VolumeArea {
+    display: flex !important;
+    position: relative !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .VolumeArea {
+    display: none !important;
+  }
+
+  .volume-side-icon {
+    width: 14px !important;
+    height: 14px !important;
+    opacity: 0.55 !important;
+  }
+
+  .volume-slider {
+    height: 4px !important;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    transform: scale(0) !important;
+  }
+
+  .volume-slider::-moz-range-thumb {
+    transform: scale(0) !important;
+  }
+
+  /* 6. Bottom Bar */
+  .BottomBar {
+    height: 106px;
+    position: absolute !important;
+    bottom: calc(-10px + env(safe-area-inset-bottom, 14px)) !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 1px 24px !important;
+    z-index: 100 !important;
+    background: transparent !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    justify-items: center !important;
+    align-items: center !important;
+  }
+
+  /* Invisible touch shield — eats all touch events in the bottom area */
+  .touch-shield {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .touch-shield {
+      display: block !important;
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 200px !important;
+      background: transparent !important;
+      pointer-events: auto !important;
+      z-index: 99 !important;
+      /* below BottomBar (z:100) so buttons still work */
+      -webkit-tap-highlight-color: transparent !important;
+    }
+  }
+
+  /* Touch-blocking backdrop behind BottomBar — prevents accidental lyric seeks */
+  .BottomBar::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -env(safe-area-inset-bottom, 40px) !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(107px + env(safe-area-inset-bottom, 40px)) !important;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 40%, rgba(0, 0, 0, 0.75) 100%) !important;
+    pointer-events: auto !important;
+    z-index: -1 !important;
+    border-radius: 0 !important;
+  }
+
+  .bottom-bar-left,
+  .bottom-bar-right {
+    display: contents !important;
+  }
+
+  /* Symmetrical Ordering & Styling */
+  #btn-lyrics {
+    order: 1 !important;
+  }
+
+  #btn-airplay {
+    order: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px !important;
+    gap: 2px !important;
+    min-width: 60px !important;
+  }
+
+  #btn-airplay .device-name {
+    font-size: 0.65rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    margin-top: 1px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 120px !important;
+    text-align: center !important;
+    display: block !important;
+    line-height: 1.2 !important;
+  }
+
+  #btn-queue {
+    order: 3 !important;
+  }
+
+  .BottomBar button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: none !important;
+    border: none !important;
+    padding: 12px !important;
+    cursor: pointer !important;
+  }
+
+  .BottomBar button img,
+  .BottomBar button svg {
+    width: 26px !important;
+    height: 26px !important;
+    opacity: 0.65 !important;
+  }
+
+  .BottomBar button:hover img,
+  .BottomBar button:hover svg {
+    opacity: 1 !important;
+  }
+
+  /* 7. Symmetrical Transition and Full-Screen Layout when Lyrics are Hidden */
+  #SpicyLyricsPage .ContentBox .NowBar.centered {
+    left: 0 !important;
+    width: 100% !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox,
+  #SpicyLyricsPage .ContentBox .NowBar .Header .MediaBox .MediaImageContainer,
+  .MetadataRow,
+  .NowBarProgress,
+  .NowBarControls,
+  .VolumeArea,
+  .quality-badge-container {
+    transition: top 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      left 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      width 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      height 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      bottom 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      transform 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      border-radius 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      box-shadow 0.6s cubic-bezier(0.25, 1, 0.2, 1),
+      opacity 0.6s cubic-bezier(0.25, 1, 0.2, 1) !important;
+    will-change: top, left, transform, width, height, opacity;
+  }
+
+  /* Shield to prevent clicking on lyrics behind the bottom controls area when lyrics are active */
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .NowBarBottomWrapper::before {
+    content: "" !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 32dvh !important;
+    background: transparent !important;
+    pointer-events: auto !important;
+    z-index: 1 !important;
+  }
+
+  /* Make sure the control elements themselves sit above the shield so they remain clickable */
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .NowBarBottomWrapper .NowBarProgress,
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .NowBarBottomWrapper .NowBarControls,
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .NowBarBottomWrapper .MetadataRow,
+  #SpicyLyricsPage .ContentBox .NowBar:not(.centered) .Header .NowBarBottomWrapper .quality-badge-container {
+    z-index: 2 !important;
+  }
+
+  /* ── Centered Mode: Header becomes the master flex column ── */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header {
+    display: flex !important;
+    flex-direction: column !important;
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    padding: calc(48px + env(safe-area-inset-top, 12px)) 28px calc(72px + env(safe-area-inset-bottom, 14px)) !important;
+    pointer-events: none !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Cover Art — flex:1.2 fills the top portion, art is centered inside */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox {
+    position: relative !important;
+    flex: 1.2 1 0 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: auto !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    margin: 0 0 6px 0 !important;
+    aspect-ratio: auto !important;
+    pointer-events: auto !important;
+    container-type: size !important;
+  }
+
+  /* Square cover art — uses container query units for a perfect square */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox .MediaImageContainer {
+    width: min(100cqw, 100cqh) !important;
+    height: min(100cqw, 100cqh) !important;
+    max-width: none !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+    border-radius: 10px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  /* Bottom Wrapper — flex:1, takes the bottom half, distributes items dynamically */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper {
+    position: relative !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    inset: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+    pointer-events: none !important;
+    padding: 0 !important;
+  }
+
+  /* Explicit per-element resets — override non-centered absolute positioning */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper .MetadataRow {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper .NowBarProgress {
+    position: relative !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    z-index: 100 !important;
+    margin: -8px 0 0 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper .quality-badge-container {
+    position: relative !important;
+    width: auto !important;
+    left: auto !important;
+    top: -36px !important;
+    bottom: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    justify-content: center !important;
+    z-index: 100 !important;
+    margin: -8px 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper .NowBarControls {
+    position: relative !important;
+    width: 100% !important;
+    left: auto !important;
+    top: -36px !important;
+    bottom: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    z-index: 100 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 18px !important;
+    margin: -8px 0 0 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .NowBarBottomWrapper .VolumeArea {
+    position: relative !important;
+    width: 100% !important;
+    left: auto !important;
+    top: -36px !important;
+    bottom: auto !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    margin: -3px 0 0 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .Metadata {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .Metadata .SongName {
+    font-size: 1.55rem !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .Metadata .Artists {
+    font-size: 1.15rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    line-height: 1.25 !important;
+    max-width: 250px !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .favorite-button {
+    display: flex !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .NowBarControls .playback-control img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .NowBarControls .playback-control.play-pause img {
+    width: 43px !important;
+    height: 43px !important;
+  }
+
+  /* Full-Bleed Top-Half Layout with Gradient Fade for Animated Artwork on Mobile */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox:has(.animated-art-video.loaded) {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 52dvh !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    max-width: none !important;
+    z-index: 1 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox:has(.animated-art-video.loaded) .MediaImageContainer {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%) !important;
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%) !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox:has(.animated-art-video.loaded) .animated-art-video {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    object-fit: cover !important;
+  }
+
+  /* Restrict bottom wrapper height when animated cover art takes up the top half to prevent spacing blowouts */
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header:has(.animated-art-video.loaded) .NowBarBottomWrapper {
+    height: 42dvh !important;
+    margin-top: auto !important;
+    flex: none !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered .Header:has(.animated-art-video.loaded) .NowBarBottomWrapper .MetadataRow {
+    bottom: -26px !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered~.LyricsContainer {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered~.BottomBar {
+    bottom: calc(0.5dvh + env(safe-area-inset-bottom, 8px)) !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered~.BottomBar button img,
+  #SpicyLyricsPage .ContentBox .NowBar.centered~.BottomBar button svg {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+
+
+  /* ── Mobile Performance: Reduce expensive backdrop-filters ── */
+  .QueuePanel {
+    backdrop-filter: blur(20px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+  }
+
+  .SpicyToast {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .romanization-toggle,
+  .translation-toggle {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .drop-zone-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(250, 36, 60, 0.2) !important;
+  }
+
+  .popup-overlay {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
+}
+
+/* ── Apple Style Dynamic Toast ── */
+.SpicyToast {
+  position: fixed;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(45, 45, 45, 0.88);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  padding: 12px 24px;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 5000;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.SpicyToast.active {
+  top: 24px;
+}
+
+.sl-simple-mode .word.past {
+  opacity: 1 !important;
+  color: #fff !important;
+}
+
+/* ── Bottom Bar ── */
+.BottomBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 20px 40px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: transparent;
+  backdrop-filter: none;
+  border-top: none;
+  z-index: 100;
+}
+
+.bottom-bar-left,
+.bottom-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.airplay-button,
+.lyrics-button,
+.queue-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, opacity 0.2s;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  /* Mild shadow */
+}
+
+/* ── Dolby Atmos Icon ── */
+#quality-badge-icon {
+  width: 82px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.airplay-button:hover,
+.lyrics-button:hover,
+.queue-button:hover {
+  transform: scale(1.1);
+}
+
+.airplay-button img,
+.lyrics-button img {
+  width: 22px;
+  height: 22px;
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.airplay-button:hover img,
+.lyrics-button:hover img {
+  opacity: 1;
+}
+
+.queue-button svg {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+  opacity: 0.8;
+}
+
+.queue-button:hover svg {
+  opacity: 1;
+}
+
+/* ── Popup ── */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+}
+
+.popup-content {
+  background: rgba(30, 30, 30, 0.9);
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 350px;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-content p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.popup-close {
+  background: #fa243c;
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.popup-close:hover {
+  background: #d91c32;
+}
+
+/* ── Lyrics Container Hidden State ── */
+.LyricsContainer {
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.LyricsContainer.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateX(50px);
+}
+
+/* ── NowBar Animations ── */
+#SpicyLyricsPage .ContentBox .NowBar {
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#SpicyLyricsPage .ContentBox .NowBar.centered {
+  left: calc(50% - var(--NowBarWidth) / 2);
+}
+
+/* ── Favorite Button ── */
+.favorite-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.favorite-button:hover {
+  transform: scale(1.1);
+}
+
+.favorite-button img,
+.options-button img {
+  width: 32px;
+  height: 32px;
+}
+
+.favorite-button img {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.favorite-button:hover img {
+  opacity: 1;
+}
+
+.favorite-button.active img {
+  filter: none;
+  opacity: 1;
+}
+
+/* ── Cover Art Pause Scale Animation (Lyrics Mode Off) ── */
+#SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox:not(:has(.animated-art-video.loaded)) .MediaImageContainer {
+  cursor: pointer;
+  transition: transform 0.6s cubic-bezier(0.25, 1.1, 0.2, 1.05), box-shadow 0.6s ease !important;
+  will-change: transform;
+}
+
+#SpicyLyricsPage .ContentBox .NowBar.centered .Header .MediaBox:not(:has(.animated-art-video.loaded)) .MediaImageContainer.paused {
+  transform: scale(0.85) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ── Queue Panel Layout Integration (Desktop & Mobile) ── */
+
+@media (min-width: 769px) {
+  #SpicyLyricsPage .ContentBox .QueuePanel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-left: none;
+    box-shadow: none;
+    z-index: 4;
+    padding-left: var(--LyricsLeftSidePadding);
+    padding-right: var(--LyricsRightSidePadding);
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translateX(50px);
+    transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      transform 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      visibility 0.5s;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel.active {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  #SpicyLyricsPage .ContentBox .NowBar.centered~.QueuePanel {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel .QueueHeader {
+    padding: 60px 0 20px 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel .QueueList {
+    padding: 0 0 80px 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #SpicyLyricsPage .ContentBox .QueuePanel {
+    position: absolute !important;
+    display: flex !important;
+    flex-direction: column !important;
+    top: calc(112px + env(safe-area-inset-top, 12px)) !important;
+    bottom: 32dvh !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(100dvh - (112px + env(safe-area-inset-top, 12px) + 32dvh)) !important;
+    padding: 0 24px !important;
+    margin: 0 !important;
+    z-index: 150 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-left: none !important;
+    border-top: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    transform: translateY(30px) !important;
+    transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      transform 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      height 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+      visibility 0.5s !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel.active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel.queue-immersive {
+    bottom: calc(4dvh + env(safe-area-inset-bottom, 12px)) !important;
+    height: calc(100dvh - (112px + env(safe-area-inset-top, 12px) + 4dvh + env(safe-area-inset-bottom, 12px))) !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel .QueueHeader {
+    padding: 10px 0 !important;
+  }
+
+  #SpicyLyricsPage .ContentBox .QueuePanel .QueueList {
+    padding: 0 0 40px 0 !important;
+  }
+}
+
+/* Immersive layout support for Queue Panel */
+#SpicyLyricsPage:has(.QueuePanel.queue-immersive) .NowBarProgress,
+#SpicyLyricsPage:has(.QueuePanel.queue-immersive) .quality-badge-container,
+#SpicyLyricsPage:has(.QueuePanel.queue-immersive) .NowBarControls .playback-control.skip-back,
+#SpicyLyricsPage:has(.QueuePanel.queue-immersive) .NowBarControls .playback-control.play-pause,
+#SpicyLyricsPage:has(.QueuePanel.queue-immersive) .NowBarControls .playback-control.skip-forward {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
