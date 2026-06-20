@@ -119,25 +119,37 @@ function preprocessArabicSyllables(syllables) {
  * Checks if a word is eligible for letter-by-letter emphasis.
  * Restricted to LTR languages and depends on character length vs duration.
  */
-function isLetterCapable(text, duration) {
-  // If the text contains spaces, it's a multi-word phrase, not a single capable syllable/word.
+function getSyllableCount(syllables, index) {
+  let count = 1;
+  for (let i = index; i < syllables.length - 1 && syllables[i].IsPartOfWord; i++) {
+    count++;
+  }
+  for (let i = index; i > 0 && syllables[i - 1].IsPartOfWord; i--) {
+    count++;
+  }
+  return count;
+}
+
+function isLetterCapable(text, duration, syllableCount = 1) {
   if (text.trim().includes(" ")) return false;
 
   const isSimpleMode = settingsManager.get("simpleLyricsMode");
   const letterLength = text.split("").length;
 
-  if (isSimpleMode) return false; // FUCKKKK
-  if (settingsManager.get("amlLyricsAnimations")) return false;
+  if (isSimpleMode) return false;
+
+  if (settingsManager.get("amlLyricsAnimations")) {
+    if (isRtl(text)) return false;
+    return duration > 1000 && letterLength < 7;
+  }
 
   if (isRtl(text)) return false;
 
-  // New sensitivity: 0.9s and 8+ letters
   if (duration >= 900 && letterLength >= 8) {
     return true;
   }
 
-  // Fallback to complex duration formula for other words
-  const baseMinDuration = isSimpleMode ? 1050 : 1000;
+  const baseMinDuration = 1000;
   const complexMinDuration = baseMinDuration + ((letterLength - 1) * 25);
 
   return duration >= complexMinDuration;
@@ -300,20 +312,83 @@ export function applySyllableLyrics(data, lyricsContentEl) {
       }));
     }
 
+    // Pre-compute emphasis at word level (consecutive IsPartOfWord entries)
+    const wordEmphasisMask = new Array(syllablesToRender.length).fill(null);
+    // wordGroupData: wordStartIndex → { combinedText, startTime, endTime }
+    const wordGroupData = {};
+    for (let wi = 0; wi < syllablesToRender.length;) {
+      const wStart = wi;
+      let combinedText = "";
+      let wordStartTime = convertTime(syllablesToRender[wi].StartTime);
+      let wordEndTime = convertTime(syllablesToRender[wi].EndTime);
+      while (wi < syllablesToRender.length) {
+        const s = syllablesToRender[wi];
+        const raw = ((!showTranslation && showRomanized && s.RomanizedText !== undefined) ? s.RomanizedText : s.Text) ?? "";
+        combinedText += settingsManager.get("trimSyllableSpaces") ? raw.trim() : raw;
+        wordEndTime = convertTime(s.EndTime);
+        wi++;
+        if (!s.IsPartOfWord) break;
+      }
+      const wordDuration = wordEndTime - wordStartTime;
+      const wordLetterCount = combinedText.replace(/\s/g, "").length;
+      const wordSyllableCount = wi - wStart;
+      const wordEmphasized = isLetterCapable(combinedText, wordDuration, wordSyllableCount);
+      for (let j = wStart; j < wi; j++) {
+        wordEmphasisMask[j] = wordEmphasized;
+      }
+      if (wordEmphasized) {
+        wordGroupData[wStart] = { combinedText, startTime: wordStartTime, endTime: wordEndTime };
+      }
+    }
+
+    let mergedWordEl = null;
+
     syllablesToRender.forEach((lead, iL, aL) => {
       const rawText = ((!showTranslation && showRomanized && lead.RomanizedText !== undefined) ? lead.RomanizedText : lead.Text) ?? "";
       const displayText = settingsManager.get("trimSyllableSpaces") ? rawText.trim() : rawText;
       const totalDuration = convertTime(lead.EndTime) - convertTime(lead.StartTime);
-      const isEmphasized = isLetterCapable(displayText, totalDuration);
+      const isEmphasized = wordEmphasisMask[iL];
+      const isFirstMerged = isEmphasized && (iL === 0 || wordEmphasisMask[iL - 1] !== true);
+      const isLastMerged = isEmphasized && (iL === aL.length - 1 || wordEmphasisMask[iL + 1] !== true);
 
       let word;
       let lettersData = null;
 
       if (isEmphasized) {
-        word = document.createElement("div");
-        const transformedText = transformText(displayText);
-        const letters = transformedText.split("");
-        lettersData = applyEmphasis(letters, word, lead, false);
+        if (isFirstMerged) {
+          word = document.createElement("div");
+          // Create letter spans for the entire combined word
+          const wd = wordGroupData[iL];
+          const combinedLetters = transformText(wd.combinedText).split("");
+          const totalLetterDuration = wd.endTime - wd.startTime;
+          const letterDuration = totalLetterDuration / combinedLetters.length;
+          lettersData = combinedLetters.map((ch, ci) => {
+            const letterEl = document.createElement("span");
+            letterEl.textContent = ch;
+            letterEl.classList.add("letter", "Emphasis");
+            const lStart = wd.startTime + ci * letterDuration;
+            const lEnd = lStart + letterDuration;
+            if (ci === combinedLetters.length - 1) {
+              letterEl.classList.add("LastLetterInWord");
+            }
+            word.appendChild(letterEl);
+            return {
+              HTMLElement: letterEl,
+              StartTime: lStart,
+              EndTime: lEnd,
+              TotalTime: letterDuration,
+              Emphasis: true,
+              BGLetter: false,
+            };
+          });
+          word.classList.add("letterGroup");
+          mergedWordEl = word;
+        } else {
+          word = mergedWordEl;
+        }
+        if (isLastMerged) {
+          mergedWordEl = null;
+        }
       } else {
         word = document.createElement("span");
         // Add ZWJ for Arabic cursive connections across syllable splits selectively
@@ -352,44 +427,55 @@ export function applySyllableLyrics(data, lyricsContentEl) {
         lineElem.classList.add("rtl");
       }
 
-      const ci = LyricsObject.Types.Syllable.Lines.length - 1;
-      if (LyricsObject.Types.Syllable.Lines[ci]?.Syllables?.Lead) {
-        const syllableObj = {
-          HTMLElement: word,
-          Text: displayText,
-          StartTime: convertTime(lead.StartTime),
-          EndTime: convertTime(lead.EndTime),
-          TotalTime: totalDuration,
-        };
-        if (isEmphasized) {
-          syllableObj.LetterGroup = true;
-          syllableObj.Letters = lettersData;
+      const isNonFirstMerged = isEmphasized && !isFirstMerged;
+      if (!isNonFirstMerged) {
+        if (iL === aL.length - 1) {
+          word.classList.add("LastWordInLine");
+        } else if (lead.IsPartOfWord) {
+          word.classList.add("PartOfWord");
         }
-        LyricsObject.Types.Syllable.Lines[ci].Syllables.Lead.push(syllableObj);
+      } else if (iL === aL.length - 1) {
+        word.classList.add("LastWordInLine");
       }
 
-      if (iL === aL.length - 1) {
-        word.classList.add("LastWordInLine");
-      } else if (lead.IsPartOfWord) {
-        word.classList.add("PartOfWord");
+      // Only push one data entry per word (skip non-first merged syllables)
+      if (!isNonFirstMerged) {
+        const ci = LyricsObject.Types.Syllable.Lines.length - 1;
+        if (LyricsObject.Types.Syllable.Lines[ci]?.Syllables?.Lead) {
+          const syllableObj = {
+            HTMLElement: word,
+            Text: (isEmphasized && isFirstMerged) ? wordGroupData[iL].combinedText : displayText,
+            StartTime: (isEmphasized && isFirstMerged) ? wordGroupData[iL].startTime : convertTime(lead.StartTime),
+            EndTime: (isEmphasized && isFirstMerged) ? wordGroupData[iL].endTime : convertTime(lead.EndTime),
+            TotalTime: (isEmphasized && isFirstMerged) ? (wordGroupData[iL].endTime - wordGroupData[iL].startTime) : totalDuration,
+            Emphasis: isEmphasized,
+          };
+          if (isEmphasized) {
+            syllableObj.LetterGroup = true;
+            syllableObj.Letters = lettersData;
+          }
+          LyricsObject.Types.Syllable.Lines[ci].Syllables.Lead.push(syllableObj);
+        }
       }
 
       // Always group syllables that are part of a word to prevent awkward line breaks
-      if (lead.IsPartOfWord) {
-        if (!currentWordGroup) {
-          currentWordGroup = document.createElement("span");
-          currentWordGroup.classList.add("word-group");
-          currentWordGroup.style.display = "inline-block";
-          currentWordGroup.style.whiteSpace = "nowrap";
-          lineElem.appendChild(currentWordGroup);
-        }
-        currentWordGroup.appendChild(word);
-      } else {
-        if (currentWordGroup) {
+      if (!isNonFirstMerged) {
+        if (lead.IsPartOfWord) {
+          if (!currentWordGroup) {
+            currentWordGroup = document.createElement("span");
+            currentWordGroup.classList.add("word-group");
+            currentWordGroup.style.display = "inline-block";
+            currentWordGroup.style.whiteSpace = "nowrap";
+            lineElem.appendChild(currentWordGroup);
+          }
           currentWordGroup.appendChild(word);
-          currentWordGroup = null;
         } else {
-          lineElem.appendChild(word);
+          if (currentWordGroup) {
+            currentWordGroup.appendChild(word);
+            currentWordGroup = null;
+          } else {
+            lineElem.appendChild(word);
+          }
         }
       }
     });
@@ -417,20 +503,80 @@ export function applySyllableLyrics(data, lyricsContentEl) {
         let currentBGWordGroup = null;
 
         let bgSyllablesToRender = preprocessArabicSyllables(bg.Syllables);
+        const bgWordEmphasisMask = new Array(bgSyllablesToRender.length).fill(null);
+        const bgWordGroupData = {};
+        for (let bwi = 0; bwi < bgSyllablesToRender.length;) {
+          const bwStart = bwi;
+          let bgCombinedText = "";
+          let bgWordStartTime = convertTime(bgSyllablesToRender[bwi].StartTime);
+          let bgWordEndTime = convertTime(bgSyllablesToRender[bwi].EndTime);
+          while (bwi < bgSyllablesToRender.length) {
+            const bs = bgSyllablesToRender[bwi];
+            const braw = ((showRomanized && bs.RomanizedText !== undefined) ? bs.RomanizedText : bs.Text) ?? "";
+            bgCombinedText += settingsManager.get("trimSyllableSpaces") ? braw.trim() : braw;
+            bgWordEndTime = convertTime(bs.EndTime);
+            bwi++;
+            if (!bs.IsPartOfWord) break;
+          }
+          const bgWordDuration = bgWordEndTime - bgWordStartTime;
+          const bgWordLetterCount = bgCombinedText.replace(/\s/g, "").length;
+          const bgWordSyllableCount = bwi - bwStart;
+          const bgWordEmphasized = isLetterCapable(bgCombinedText, bgWordDuration, bgWordSyllableCount);
+          for (let j = bwStart; j < bwi; j++) {
+            bgWordEmphasisMask[j] = bgWordEmphasized;
+          }
+          if (bgWordEmphasized) {
+            bgWordGroupData[bwStart] = { combinedText: bgCombinedText, startTime: bgWordStartTime, endTime: bgWordEndTime };
+          }
+        }
+
+        let bgMergedWordEl = null;
+
         bgSyllablesToRender.forEach((bw, bI, bA) => {
           const rawBgText = ((showRomanized && bw.RomanizedText !== undefined) ? bw.RomanizedText : bw.Text) ?? "";
           const displayBgText = settingsManager.get("trimSyllableSpaces") ? rawBgText.trim() : rawBgText;
           const totalDuration = convertTime(bw.EndTime) - convertTime(bw.StartTime);
-          const isEmphasized = isLetterCapable(displayBgText, totalDuration);
+          const isEmphasized = bgWordEmphasisMask[bI];
+          const isFirstMergedBg = isEmphasized && (bI === 0 || bgWordEmphasisMask[bI - 1] !== true);
+          const isLastMergedBg = isEmphasized && (bI === bA.length - 1 || bgWordEmphasisMask[bI + 1] !== true);
 
           let bwE;
           let lettersData = null;
 
           if (isEmphasized) {
-            bwE = document.createElement("div");
-            const transformedBgText = transformText(displayBgText);
-            const letters = transformedBgText.split("");
-            lettersData = applyEmphasis(letters, bwE, bw, true);
+            if (isFirstMergedBg) {
+              bwE = document.createElement("div");
+              const wd = bgWordGroupData[bI];
+              const combinedLetters = transformText(wd.combinedText).split("");
+              const totalLetterDuration = wd.endTime - wd.startTime;
+              const letterDuration = totalLetterDuration / combinedLetters.length;
+              lettersData = combinedLetters.map((ch, ci) => {
+                const letterEl = document.createElement("span");
+                letterEl.textContent = ch;
+                letterEl.classList.add("letter", "Emphasis");
+                const lStart = wd.startTime + ci * letterDuration;
+                const lEnd = lStart + letterDuration;
+                if (ci === combinedLetters.length - 1) {
+                  letterEl.classList.add("LastLetterInWord");
+                }
+                bwE.appendChild(letterEl);
+                return {
+                  HTMLElement: letterEl,
+                  StartTime: lStart,
+                  EndTime: lEnd,
+                  TotalTime: letterDuration,
+                  Emphasis: true,
+                  BGLetter: true,
+                };
+              });
+              bwE.classList.add("letterGroup");
+              bgMergedWordEl = bwE;
+            } else {
+              bwE = bgMergedWordEl;
+            }
+            if (isLastMergedBg) {
+              bgMergedWordEl = null;
+            }
           } else {
             bwE = document.createElement("span");
             // Add ZWJ for Arabic cursive connections across syllable splits selectively
@@ -468,46 +614,59 @@ export function applySyllableLyrics(data, lyricsContentEl) {
             bgLine.classList.add("rtl");
           }
 
-          const ci = LyricsObject.Types.Syllable.Lines.length - 1;
-          if (LyricsObject.Types.Syllable.Lines[ci]?.Syllables?.Lead) {
-            const syllableObj = {
-              HTMLElement: bwE,
-              Text: displayBgText,
-              StartTime: convertTime(bw.StartTime),
-              EndTime: convertTime(bw.EndTime),
-              TotalTime: totalDuration,
-              BGWord: true,
-            };
-            if (isEmphasized) {
-              syllableObj.LetterGroup = true;
-              syllableObj.Letters = lettersData;
+          const isNonFirstMergedBg = isEmphasized && !isFirstMergedBg;
+
+          // Only push one data entry per word (skip non-first merged syllables)
+          if (!isNonFirstMergedBg) {
+            const ci = LyricsObject.Types.Syllable.Lines.length - 1;
+            if (LyricsObject.Types.Syllable.Lines[ci]?.Syllables?.Lead) {
+              const syllableObj = {
+                HTMLElement: bwE,
+                Text: (isEmphasized && isFirstMergedBg) ? bgWordGroupData[bI].combinedText : displayBgText,
+                StartTime: (isEmphasized && isFirstMergedBg) ? bgWordGroupData[bI].startTime : convertTime(bw.StartTime),
+                EndTime: (isEmphasized && isFirstMergedBg) ? bgWordGroupData[bI].endTime : convertTime(bw.EndTime),
+                TotalTime: (isEmphasized && isFirstMergedBg) ? (bgWordGroupData[bI].endTime - bgWordGroupData[bI].startTime) : totalDuration,
+                BGWord: true,
+                Emphasis: isEmphasized,
+              };
+              if (isEmphasized) {
+                syllableObj.LetterGroup = true;
+                syllableObj.Letters = lettersData;
+              }
+              LyricsObject.Types.Syllable.Lines[ci].Syllables.Lead.push(syllableObj);
             }
-            LyricsObject.Types.Syllable.Lines[ci].Syllables.Lead.push(syllableObj);
           }
 
-          bwE.classList.add("bg-word", "word");
-
-          if (bI === bA.length - 1) {
+          if (!isNonFirstMergedBg) {
+            bwE.classList.add("bg-word", "word");
+          }
+          if (!isNonFirstMergedBg) {
+            if (bI === bA.length - 1) {
+              bwE.classList.add("LastWordInLine");
+            } else if (bw.IsPartOfWord) {
+              bwE.classList.add("PartOfWord");
+            }
+          } else if (bI === bA.length - 1) {
             bwE.classList.add("LastWordInLine");
-          } else if (bw.IsPartOfWord) {
-            bwE.classList.add("PartOfWord");
           }
 
-          const prevBG = bA[bI - 1];
-          if (bw.IsPartOfWord || (prevBG?.IsPartOfWord && currentBGWordGroup)) {
-            if (!currentBGWordGroup) {
-              const group = document.createElement("span");
-              group.classList.add("word-group");
-              group.style.display = "inline-block";
-              group.style.whiteSpace = "nowrap";
-              bgLine.appendChild(group);
-              currentBGWordGroup = group;
+          if (!isNonFirstMergedBg) {
+            const prevBG = bA[bI - 1];
+            if (bw.IsPartOfWord || (prevBG?.IsPartOfWord && currentBGWordGroup)) {
+              if (!currentBGWordGroup) {
+                const group = document.createElement("span");
+                group.classList.add("word-group");
+                group.style.display = "inline-block";
+                group.style.whiteSpace = "nowrap";
+                bgLine.appendChild(group);
+                currentBGWordGroup = group;
+              }
+              currentBGWordGroup.appendChild(bwE);
+              if (!bw.IsPartOfWord && prevBG?.IsPartOfWord) currentBGWordGroup = null;
+            } else {
+              currentBGWordGroup = null;
+              bgLine.appendChild(bwE);
             }
-            currentBGWordGroup.appendChild(bwE);
-            if (!bw.IsPartOfWord && prevBG?.IsPartOfWord) currentBGWordGroup = null;
-          } else {
-            currentBGWordGroup = null;
-            bgLine.appendChild(bwE);
           }
         });
       });

@@ -121,9 +121,9 @@ class SimpleSpring { // i stole that shit from my own lyrics renderer because.. 
 
 function createLineSprings() {
   return {
-    Y: new SimpleSpring(0, 70, 10),
-    Opacity: new SimpleSpring(1, 70, 10),
-    Blur: new SimpleSpring(0, 70, 10),
+    Y: new SimpleSpring(0, 100, 18),
+    Opacity: new SimpleSpring(1, 100, 18),
+    Blur: new SimpleSpring(0, 100, 18),
   };
 }
 
@@ -167,7 +167,7 @@ function updateStaggeredTargets(arr, activeIndex, previousActiveIndex) { // hell
     const wasPreviouslyActive = prevGroup !== null && groupIndices[i] === prevGroup && dist !== 0;
 
     const step = dist + 1;
-    const delay = Math.max(0, step) * 80;
+    const delay = Math.max(0, step) * 50;
 
     const applyTargets = () => {
       if (!line.AnimatorStoreLine) return;
@@ -394,13 +394,26 @@ function animateSyllable(position, deltaTime) {
   const isAML = settingsManager.get("amlAnimation");
   const isAML_lyrics = settingsManager.get("amlLyricsAnimations");
 
-  // Trigger staggered targets if active index changed (Simple Mode OR AML OR )
-  if ((isSimpleMode || isAML || isAML_lyrics) && activeIdx !== -1 && activeIdx !== lastActiveLineIdx) {
-    updateStaggeredTargets(arr, activeIdx, lastActiveLineIdx);
-    lastActiveLineIdx = activeIdx;
+  // Advance scroll focus: at half-gap for gaps > 0.5s, or immediately on sung
+  let scrollIdx = activeIdx;
+  if ((isSimpleMode || isAML || isAML_lyrics) && activeIdx !== -1 && activeIdx + 1 < arr.length) {
+    const curLineEnd = arr[activeIdx].EndTime;
+    const nextLineStart = arr[activeIdx + 1].StartTime;
+    const gap = nextLineStart - curLineEnd;
+    if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
+      scrollIdx = activeIdx + 1;
+    } else if (gap <= 0.5 && position > curLineEnd) {
+      scrollIdx = activeIdx + 1;
+    }
   }
 
-  const searchIdx = activeIdx !== -1 ? activeIdx : (lastActiveLineIdx || 0);
+  // Trigger staggered targets if scroll index changed
+  if ((isSimpleMode || isAML || isAML_lyrics) && scrollIdx !== -1 && scrollIdx !== lastActiveLineIdx) {
+    updateStaggeredTargets(arr, scrollIdx, lastActiveLineIdx);
+    lastActiveLineIdx = scrollIdx;
+  }
+
+  const searchIdx = scrollIdx !== -1 ? scrollIdx : (lastActiveLineIdx || 0);
   const offsetSearch = _isMobile ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
@@ -456,9 +469,10 @@ function animateSyllable(position, deltaTime) {
 
         setStyleIfChanged(line.HTMLElement, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
         setStyleIfChanged(line.HTMLElement, "opacity", curOp.toFixed(3));
-        // Skip filter update if blur is negligible (avoids expensive recomposite)
-        if (curBlur > 0.1) {
-          setStyleIfChanged(line.HTMLElement, "filter", `blur(${curBlur.toFixed(1)}px)`);
+        // Remove blur on hovered lines, skip if negligible
+        const effectiveBlur = line.HTMLElement.matches(':hover') ? 0 : curBlur;
+        if (effectiveBlur > 0.1) {
+          setStyleIfChanged(line.HTMLElement, "filter", `blur(${effectiveBlur.toFixed(1)}px)`);
         } else {
           setStyleIfChanged(line.HTMLElement, "filter", 'none');
         }
@@ -527,39 +541,19 @@ function animateSyllable(position, deltaTime) {
         const pct = getProgressPercentage(position, word.StartTime, word.EndTime);
         const targetGradientPos = -20 + 120 * pct;
 
-        // Smooth ease factor: ramps to 1 over ~40% of progress for a gentler rise
-        const easeUpFactor = easeSinOut(Math.min(1, pct * 2.5));
-
-        if (word.Emphasis) {
-          // Emphasis: zoom 1.0 → 1.62 (peak) → 1.2 (rest), glow slightly below normal emphasis
-          const bellCurve = Math.sin(pct * Math.PI);
-          let zoomScale, glowAmount;
-          if (wordActive) {
-            // Linear ramp 1.0→1.2 + bell overshoot peaking at 1.62
-            zoomScale = 1.0 + 0.2 * pct + 0.52 * bellCurve;
-            glowAmount = bellCurve * 0.28;
-          } else if (wordSung) {
-            zoomScale = 1.2;
-            glowAmount = 0;
-          } else {
-            zoomScale = 1;
-            glowAmount = 0;
-          }
-          const yOffset = wordActive ? -3 * easeUpFactor : (wordSung ? -3 : 0);
-
-          setStyleIfChanged(word.HTMLElement, "scale", `${zoomScale.toFixed(4)}`);
-          setStyleIfChanged(word.HTMLElement, "transform", `translate3d(0, ${yOffset.toFixed(2)}px, 0)`);
-          setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius", `${(4 + 4 * glowAmount).toFixed(2)}px`);
-          setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", `${(glowAmount * 35).toFixed(2)}%`);
-        } else {
-          // Normal: clean ease up by 3px, stays up when sung, no scale change, no glow
-          const yOffset = wordActive ? -3 * easeUpFactor : (wordSung ? -3 : 0);
-
-          setStyleIfChanged(word.HTMLElement, "scale", "1");
-          setStyleIfChanged(word.HTMLElement, "transform", `translate3d(0, ${yOffset.toFixed(2)}px, 0)`);
-          setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius", "0px");
-          setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", "0%");
+        // Lift spring matching Apple Music liftSpringTimingParameters (stiffness=14, damping=7, mass=1)
+        // frequency = sqrt(14)/(2π) ≈ 0.596 Hz, dampingRatio = 7/(2*sqrt(14)) ≈ 0.936
+        if (!word._amlYSpring) {
+          word._amlYSpring = new Spring(0, 0.596, 0.936);
+          word._amlYSpring.SetGoal(0, true);
         }
+        word._amlYSpring.SetGoal((wordActive || wordSung) ? -2 : 0);
+        const yOffset = word._amlYSpring.Step(deltaTime);
+
+        setStyleIfChanged(word.HTMLElement, "scale", "1");
+        setStyleIfChanged(word.HTMLElement, "transform", `translate3d(0, ${yOffset.toFixed(2)}px, 0)`);
+        setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius", "0px");
+        setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", "0%");
 
         setStyleIfChanged(word.HTMLElement, "--gradient-position", `${targetGradientPos.toFixed(2)}%`);
 
@@ -569,37 +563,20 @@ function animateSyllable(position, deltaTime) {
             const letterGradientPos = -20 + 120 * letterPct;
             const letterActive = position >= letter.StartTime && position <= letter.EndTime;
             const letterSung = position > letter.EndTime;
-            const letterEase = easeSinOut(Math.min(1, letterPct * 2.5));
 
-            if (letter.Emphasis) {
-              // Emphasis letter: zoom 1.0 → 1.62 → 1.2, glow slightly below normal emphasis
-              const letterBell = Math.sin(letterPct * Math.PI);
-              let letterZoom, letterGlow;
-              if (letterActive) {
-                letterZoom = 1.0 + 0.2 * letterPct + 0.52 * letterBell;
-                letterGlow = letterBell * 0.28;
-              } else if (letterSung) {
-                letterZoom = 1.2;
-                letterGlow = 0;
-              } else {
-                letterZoom = 1;
-                letterGlow = 0;
-              }
-              const letterY = letterActive ? -3 * letterEase : (letterSung ? -3 : 0);
-
-              setStyleIfChanged(letter.HTMLElement, "scale", `${letterZoom.toFixed(4)}`);
-              setStyleIfChanged(letter.HTMLElement, "transform", `translate3d(0, ${letterY.toFixed(2)}px, 0)`);
-              setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", `${(4 + 4 * letterGlow).toFixed(2)}px`);
-              setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", `${(letterGlow * 35).toFixed(2)}%`);
-            } else {
-              // Normal letter: clean ease up 3px, stays up when sung
-              const letterY = letterActive ? -3 * letterEase : (letterSung ? -3 : 0);
-
-              setStyleIfChanged(letter.HTMLElement, "scale", "1");
-              setStyleIfChanged(letter.HTMLElement, "transform", `translate3d(0, ${letterY.toFixed(2)}px, 0)`);
-              setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", "0px");
-              setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", "0%");
+            // Same slow lift spring for letters
+            if (!letter._amlYSpring) {
+              letter._amlYSpring = new Spring(0, 0.596, 0.936);
+              letter._amlYSpring.SetGoal(0, true);
             }
+            letter._amlYSpring.SetGoal((letterActive || letterSung) ? -2 : 0);
+            const letterY = letter._amlYSpring.Step(deltaTime);
+
+            // Letters always get normal scale/no glow — emphasis pulse is word-level (word.Emphasis)
+            setStyleIfChanged(letter.HTMLElement, "scale", "1");
+            setStyleIfChanged(letter.HTMLElement, "transform", `translate3d(0, ${letterY.toFixed(2)}px, 0)`);
+            setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", "0px");
+            setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", "0%");
 
             setStyleIfChanged(letter.HTMLElement, "--gradient-position", `${letterGradientPos.toFixed(2)}%`);
           });
@@ -886,13 +863,26 @@ function animateLine(position, deltaTime) {
     }
   }
 
-  // Trigger staggered targets if active index changed (Simple Mode OR AML)
-  if ((isSimpleMode || isAML) && activeIdx !== -1 && activeIdx !== lastActiveLineIdx) {
-    updateStaggeredTargets(arr, activeIdx, lastActiveLineIdx);
-    lastActiveLineIdx = activeIdx;
+  // Advance scroll focus: at half-gap for gaps > 0.5s, or immediately on sung
+  let scrollIdx = activeIdx;
+  if ((isSimpleMode || isAML) && activeIdx !== -1 && activeIdx + 1 < arr.length) {
+    const curLineEnd = arr[activeIdx].EndTime;
+    const nextLineStart = arr[activeIdx + 1].StartTime;
+    const gap = nextLineStart - curLineEnd;
+    if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
+      scrollIdx = activeIdx + 1;
+    } else if (gap <= 0.5 && position > curLineEnd) {
+      scrollIdx = activeIdx + 1;
+    }
   }
 
-  const searchIdx = activeIdx !== -1 ? activeIdx : (lastActiveLineIdx || 0);
+  // Trigger staggered targets if scroll index changed
+  if ((isSimpleMode || isAML) && scrollIdx !== -1 && scrollIdx !== lastActiveLineIdx) {
+    updateStaggeredTargets(arr, scrollIdx, lastActiveLineIdx);
+    lastActiveLineIdx = scrollIdx;
+  }
+
+  const searchIdx = scrollIdx !== -1 ? scrollIdx : (lastActiveLineIdx || 0);
   const offsetSearch = _isMobile ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
@@ -933,8 +923,10 @@ function animateLine(position, deltaTime) {
 
         setStyleIfChanged(line.HTMLElement, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
         setStyleIfChanged(line.HTMLElement, "opacity", curOp.toFixed(3));
-        if (curBlur > 0.1) {
-          setStyleIfChanged(line.HTMLElement, "filter", `blur(${curBlur.toFixed(1)}px)`);
+        // Remove blur on hovered lines, skip if negligible
+        const effectiveBlur = line.HTMLElement.matches(':hover') ? 0 : curBlur;
+        if (effectiveBlur > 0.1) {
+          setStyleIfChanged(line.HTMLElement, "filter", `blur(${effectiveBlur.toFixed(1)}px)`);
         } else {
           setStyleIfChanged(line.HTMLElement, "filter", 'none');
         }
