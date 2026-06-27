@@ -96,134 +96,108 @@ const SimpleLyricsMode_LetterEffectsStrengthConfig = {
   },
 };
 
-class SimpleSpring { // i stole that shit from my own lyrics renderer because.. ehhhh   - nurislamaibekuly
-  constructor(position, tension = 70, damping = 13) {
-    this.position = position;
-    this.velocity = 0;
-    this.target = position;
-    this.tension = tension;
-    this.damping = damping;
-  }
+let _activeLineIndex = -1;
+let _tyRafId = null;
 
-  SetGoal(target) {
-    this.target = target;
-  }
+// specs.swift: mass=1, stiffness=100, damping=18
+const SPRING_W0 = 10;
+const SPRING_ZETA = 0.9;
+const SPRING_WD = SPRING_W0 * Math.sqrt(1 - SPRING_ZETA * SPRING_ZETA);
 
-  Step(dt) {
-    const safeDt = Math.min(dt, 0.064);
-    const displacement = this.position - this.target;
-    const acceleration = -this.tension * displacement - this.damping * this.velocity;
-    this.velocity += acceleration * safeDt;
-    this.position += this.velocity * safeDt;
-    return this.position;
-  }
+function springPos(t, start, end) {
+  const decay = Math.exp(-SPRING_ZETA * SPRING_W0 * t);
+  const cosTerm = Math.cos(SPRING_WD * t);
+  const sinTerm = (SPRING_ZETA / Math.sqrt(1 - SPRING_ZETA * SPRING_ZETA)) * Math.sin(SPRING_WD * t);
+  return end + (start - end) * decay * (cosTerm + sinTerm);
 }
 
-function createLineSprings() {
-  return {
-    Y: new SimpleSpring(0, 100, 18),
-    Opacity: new SimpleSpring(1, 100, 18),
-    Blur: new SimpleSpring(0, 100, 18),
-  };
-}
-
-function updateStaggeredTargets(arr, activeIndex, previousActiveIndex) { // hellooo staggered fucks :3
+function setLineAnimTargets(arr, activeIndex) {
   if (activeIndex < 0) return;
+  _activeLineIndex = activeIndex;
 
-  const groupIndices = [];
-  let currentGroup = 0;
-  for (let i = 0; i < arr.length; i++) {
-    if (i > 0 && !arr[i].BGLine) {
-      currentGroup++;
-    }
-    groupIndices[i] = currentGroup;
-  }
+  const scrollContainer = document.querySelector('.LyricsContent');
+  if (!scrollContainer) return;
 
-  const activeGroup = groupIndices[activeIndex];
-  const prevGroup = (previousActiveIndex !== null && previousActiveIndex !== undefined && previousActiveIndex >= 0)
-    ? groupIndices[previousActiveIndex] : null;
+  const activeEl = arr[activeIndex]?.HTMLElement;
+  if (!activeEl) return;
 
+  const containerHeight = scrollContainer.clientHeight;
+  const lineHeight = activeEl.offsetHeight;
+
+  const currentTyVal = parseFloat(getComputedStyle(activeEl).getPropertyValue('--ty')) || 0;
+  const elementRect = activeEl.getBoundingClientRect();
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const naturalLineTop = elementRect.top - containerRect.top - currentTyVal;
+
+  const targetTyVal = (containerHeight * 0.28) - naturalLineTop;
+
+  const lineTotal = lineHeight + 25;
+  const visibleRange = Math.ceil(containerHeight / lineTotal) + 3;
+  const firstVisible = Math.max(0, activeIndex - visibleRange);
+
+  // Build per-line delays and set stagger/blur immediately (CSS transitions handle those)
+  const delays = new Array(arr.length);
+  let maxDelay = 0;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
-    const dist = groupIndices[i] - activeGroup;
+    const el = line.HTMLElement;
+    if (!el) continue;
 
-    if (!line.AnimatorStoreLine) {
-      line.AnimatorStoreLine = createLineSprings();
-      line.AnimatorStoreLine.Y.position = dist * 23;
-      line.AnimatorStoreLine.Opacity.position = dist === 0 ? 1 : 0.3;
+    line._lineIndex = i;
 
-      const initialBlurVal = dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8);
-      line.AnimatorStoreLine.Blur.normalGoal = initialBlurVal;
+    const distFromActive = Math.abs(i - activeIndex);
+    const isVisible = distFromActive <= visibleRange;
+    const delay = isVisible ? 0.10 + (i - firstVisible) * 0.05 : 0;
+    delays[i] = delay;
+    if (delay > maxDelay) maxDelay = delay;
+    el.style.setProperty('--stagger-delay', `${delay}s`);
 
-      const curScroll = isUserScrolling();
-      line.AnimatorStoreLine.Blur.position = curScroll ? 0 : (dist === 0 ? 0 : 4);
-      line.AnimatorStoreLine.Blur.target = curScroll ? 0 : initialBlurVal;
-    }
+    const dist = i - activeIndex;
+    el.style.setProperty('--blur-amount', isVisible ? `${dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8)}px` : '0px');
 
-    line.AnimatorStoreLine.baseY = dist * 23;
-    line.AnimatorStoreLine.baseOpacity = dist === 0 ? 1 : 0.35;
-
-    // Check if this line was the previously active line
-    const wasPreviouslyActive = prevGroup !== null && groupIndices[i] === prevGroup && dist !== 0;
-
-    const step = dist + 1;
-    const delay = Math.max(0, step) * 50;
-
-    const applyTargets = () => {
-      if (!line.AnimatorStoreLine) return;
-
-      line.AnimatorStoreLine.baseY = dist * 23;
-      line.AnimatorStoreLine.Y.SetGoal(dist * 23);
-
-      if (wasPreviouslyActive) {
-        // Hold at full white opacity and no blur for 300ms before fading/blurring out
-        line.AnimatorStoreLine.baseOpacity = 1;
-        line.AnimatorStoreLine.Opacity.SetGoal(1);
-        line.AnimatorStoreLine.Blur.SetGoal(0);
-        if (line._opacityHoldTimeout) {
-          clearTimeout(line._opacityHoldTimeout);
-        }
-        line._opacityHoldTimeout = setTimeout(() => {
-          if (line.AnimatorStoreLine) {
-            line.AnimatorStoreLine.baseOpacity = 0.35;
-            if (!((settingsManager.get("amlAnimation") || settingsManager.get("amlLyricsAnimations")) && line.BGLine)) {
-              line.AnimatorStoreLine.Opacity.SetGoal(0.35);
-              const finalBlur = dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8);
-              line.AnimatorStoreLine.Blur.SetGoal(isUserScrolling() ? 0 : finalBlur);
-            }
-          }
-          line._opacityHoldTimeout = null;
-        }, 300);
-      } else {
-        // Clear any lingering hold timeout
-        if (line._opacityHoldTimeout) {
-          clearTimeout(line._opacityHoldTimeout);
-          line._opacityHoldTimeout = null;
-        }
-        const targetOp = dist === 0 ? 1 : 0.35;
-        line.AnimatorStoreLine.baseOpacity = targetOp;
-        line.AnimatorStoreLine.Opacity.SetGoal(targetOp);
-      }
-
-      if (!wasPreviouslyActive) {
-        const blurVal = dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8);
-        line.AnimatorStoreLine.Blur.normalGoal = blurVal;
-        line.AnimatorStoreLine.Blur.SetGoal(isUserScrolling() ? 0 : blurVal);
-      }
-    };
-
-    if (line._staggerTimeout) {
-      clearTimeout(line._staggerTimeout);
-      line._staggerTimeout = null;
-    }
-
-    if (Math.abs(dist) > 10 || delay === 0) {
-      applyTargets();
-    } else {
-      line._staggerTimeout = setTimeout(applyTargets, delay);
-    }
+    line._baseY = targetTyVal;
   }
-} // pls don't fire me yxqo
+
+  // specs.swift spring per line with stagger
+  if (_tyRafId) cancelAnimationFrame(_tyRafId);
+
+  const startTy = currentTyVal;
+  const endTy = targetTyVal;
+  const startTime = performance.now();
+
+  // Only animate lines within the visible range + buffer for performance
+  const updateStart = Math.max(0, firstVisible);
+  const updateEnd = Math.min(arr.length, firstVisible + visibleRange * 2 + 5);
+
+  function tick() {
+    const elapsed = (performance.now() - startTime) / 1000;
+
+    for (let i = updateStart; i < updateEnd; i++) {
+      const el = arr[i]?.HTMLElement;
+      if (!el) continue;
+      const d = delays[i];
+      if (d === undefined) continue;
+      const lineT = elapsed - d;
+      const ty = lineT <= 0 ? startTy : springPos(lineT, startTy, endTy);
+      el.style.setProperty('--ty', `${ty}px`);
+    }
+
+    // Check if spring settled within 0.5px
+    const slowestT = elapsed - maxDelay;
+    if (elapsed > 10 || (slowestT > 0 && Math.abs(springPos(slowestT, startTy, endTy) - endTy) < 0.5)) {
+      for (let i = 0; i < arr.length; i++) {
+        const el = arr[i]?.HTMLElement;
+        if (el) el.style.setProperty('--ty', `${endTy}px`);
+      }
+      _tyRafId = null;
+      return;
+    }
+
+    _tyRafId = requestAnimationFrame(tick);
+  }
+
+  _tyRafId = requestAnimationFrame(tick);
+}
 
 function easeSinOut(x) {
   return Math.sin((x * Math.PI) / 2);
@@ -335,6 +309,45 @@ function applyBlur(arr, activeIndex) {
   }
 }
 
+let _lastPosition = 0;
+let _lastSeekTime = 0;
+const _finishAnimMap = new Map();
+const FINISH_DURATION = 250;
+const FREEZE_DURATION = 100;
+
+function getAMLProgress(key, position, startTime, endTime) {
+  const now = performance.now();
+
+  // Tap freeze: freeze progress for 100ms after seek
+  if (now - _lastSeekTime < FREEZE_DURATION) {
+    const anim = _finishAnimMap.get(key);
+    if (anim) {
+      const elapsed = now - anim.startTime;
+      const t = Math.min(1, elapsed / FINISH_DURATION);
+      return anim.startValue + (1 - anim.startValue) * t;
+    }
+    return position > startTime ? 1 : 0;
+  }
+
+  const duration = endTime - startTime;
+  if (duration <= 0) return position >= startTime ? 1 : 0;
+  const linear = Math.max(0, Math.min(1, (position - startTime) / duration));
+
+  // Rush to 100% over 250ms after endTime
+  if (position >= endTime) {
+    if (!_finishAnimMap.has(key)) {
+      _finishAnimMap.set(key, { startValue: linear, startTime: now });
+    }
+    const anim = _finishAnimMap.get(key);
+    const elapsed = now - anim.startTime;
+    const t = Math.min(1, elapsed / FINISH_DURATION);
+    return anim.startValue + (1 - anim.startValue) * t;
+  }
+
+  _finishAnimMap.delete(key);
+  return linear;
+}
+
 /**
  * Main animation function — called every frame.
  * @param {number} position - Current audio position in milliseconds
@@ -345,6 +358,12 @@ export function animateLyrics(position, lyricsType, skip = false) {
   const now = performance.now();
   const deltaTime = (now - lastFrameTime) / 1000;
   lastFrameTime = now;
+
+  // Seek/tap detection: large position jump means user seeked
+  if (Math.abs(position - _lastPosition) > 1000) {
+    _lastSeekTime = now;
+  }
+  _lastPosition = position;
 
   if (skip || !lyricsType || lyricsType === "None" || lyricsType === "Static") return;
 
@@ -409,7 +428,7 @@ function animateSyllable(position, deltaTime) {
 
   // Trigger staggered targets if scroll index changed
   if ((isSimpleMode || isAML || isAML_lyrics) && scrollIdx !== -1 && scrollIdx !== lastActiveLineIdx) {
-    updateStaggeredTargets(arr, scrollIdx, lastActiveLineIdx);
+    setLineAnimTargets(arr, scrollIdx);
     lastActiveLineIdx = scrollIdx;
   }
 
@@ -418,79 +437,46 @@ function animateSyllable(position, deltaTime) {
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
 
-  // First step all line-level staggered animations (with snapping for lines outside window)
-  if (isSimpleMode || isAML || isAML_lyrics) {
-    const isScrolling = isUserScrolling();
-    for (let index = 0; index < arr.length; index++) {
-      const line = arr[index];
-      if (line.AnimatorStoreLine) {
-        let curY, curOp, curBlur;
-        if (line.AnimatorStoreLine.Blur.normalGoal !== undefined) {
-          line.AnimatorStoreLine.Blur.SetGoal(isScrolling ? 0 : line.AnimatorStoreLine.Blur.normalGoal);
-        }
-
-        // Dynamically adjust BGLine targets in AML mode
-        if ((isAML || isAML_lyrics) && line.BGLine) {
-          const isBgActive = position >= line.StartTime && position <= line.EndTime;
-          const baseY = line.AnimatorStoreLine.baseY !== undefined ? line.AnimatorStoreLine.baseY : (line.AnimatorStoreLine.Y.target);
-          if (isBgActive) {
-            line.AnimatorStoreLine.Y.SetGoal(baseY);
-            line.AnimatorStoreLine.Opacity.SetGoal(1);
-          } else {
-            // Always faded out and up behind the main line
-            line.AnimatorStoreLine.Y.SetGoal(baseY - 18);
-            line.AnimatorStoreLine.Opacity.SetGoal(0);
-          }
-        }
-
-        if (index >= startIdx && index < endIdx) {
-          curY = line.AnimatorStoreLine.Y.Step(deltaTime);
-          curOp = line.AnimatorStoreLine.Opacity.Step(deltaTime);
-          curBlur = line.AnimatorStoreLine.Blur.Step(deltaTime);
-          line.Snapped = false;
-        } else {
-          if (line.Snapped) {
-            continue;
-          }
-          // Snap instantly if outside active window to prevent stacking
-          curY = line.AnimatorStoreLine.Y.target;
-          line.AnimatorStoreLine.Y.position = curY;
-          line.AnimatorStoreLine.Y.velocity = 0;
-
-          curOp = line.AnimatorStoreLine.Opacity.target;
-          line.AnimatorStoreLine.Opacity.position = curOp;
-          line.AnimatorStoreLine.Opacity.velocity = 0;
-
-          curBlur = line.AnimatorStoreLine.Blur.target;
-          line.AnimatorStoreLine.Blur.position = curBlur;
-          line.AnimatorStoreLine.Blur.velocity = 0;
-          line.Snapped = true;
-        }
-
-        setStyleIfChanged(line.HTMLElement, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
-        setStyleIfChanged(line.HTMLElement, "opacity", curOp.toFixed(3));
-        // Remove blur on hovered lines, skip if negligible
-        const effectiveBlur = line.HTMLElement.matches(':hover') ? 0 : curBlur;
-        if (effectiveBlur > 0.1) {
-          setStyleIfChanged(line.HTMLElement, "filter", `blur(${effectiveBlur.toFixed(1)}px)`);
-        } else {
-          setStyleIfChanged(line.HTMLElement, "filter", 'none');
-        }
+  // If user is scrolling, cancel any ongoing --ty stagger animation
+  if (isUserScrolling()) {
+    if (_tyRafId) { cancelAnimationFrame(_tyRafId); _tyRafId = null; }
+    for (const line of arr) {
+      const el = line.HTMLElement;
+      if (el && el.style.getPropertyValue('--ty')) {
+        el.style.removeProperty('--ty');
+        el.style.removeProperty('--stagger-delay');
+        el.style.removeProperty('--blur-amount');
+        line._baseY = 0;
       }
     }
   }
 
-  // Sync credits translation with the last line's translation to prevent overlap
+  // BG line per-frame dynamic adjustment
+  for (let index = 0; index < arr.length; index++) {
+    const line = arr[index];
+    if (line._lineIndex === undefined) continue;
+    if (!line.BGLine) continue;
+    const el = line.HTMLElement;
+    if (!el) continue;
+
+    const dist = index - _activeLineIndex;
+    const isBgActive = (isAML || isAML_lyrics) && position >= line.StartTime && position <= line.EndTime;
+    const baseY = dist * 25;
+    if (isBgActive) {
+      el.style.transform = `translate3d(0, ${baseY}px, 0) scale(1)`;
+      el.style.opacity = '1';
+    } else {
+      el.style.transform = `translate3d(0, ${baseY - 18}px, 0) scale(0.98)`;
+      el.style.opacity = '0';
+    }
+  }
+
+  // Credits move with container scroll, no additional transform needed
   const lastLine = arr[arr.length - 1];
   if (lastLine) {
     const creditsEl = lastLine.HTMLElement.parentElement?.querySelector(".Credits");
     if (creditsEl) {
-      if ((isSimpleMode || isAML || isAML_lyrics) && lastLine.AnimatorStoreLine) {
-        const curY = lastLine.AnimatorStoreLine.Y.position;
-        setStyleIfChanged(creditsEl, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
-      } else {
-        creditsEl.style.removeProperty("transform");
-      }
+      creditsEl.style.removeProperty("transform");
     }
   }
 
@@ -538,7 +524,7 @@ function animateSyllable(position, deltaTime) {
       const isDot = word.Dot;
 
       if (isAML_lyrics) {
-        const pct = getProgressPercentage(position, word.StartTime, word.EndTime);
+        const pct = getAMLProgress(word.HTMLElement, position, word.StartTime, word.EndTime);
         const targetGradientPos = -20 + 120 * pct;
 
         // GPU acceleration hack for AML lift — only promote active/nearby elements to avoid layer explosion
@@ -565,7 +551,7 @@ function animateSyllable(position, deltaTime) {
 
         if (word.Letters) {
           word.Letters.forEach(letter => {
-            const letterPct = getProgressPercentage(position, letter.StartTime, letter.EndTime);
+            const letterPct = getAMLProgress(letter.HTMLElement, position, letter.StartTime, letter.EndTime);
             const letterGradientPos = -20 + 120 * letterPct;
             const letterActive = position >= letter.StartTime && position <= letter.EndTime;
             const letterSung = position > letter.EndTime;
@@ -890,7 +876,7 @@ function animateLine(position, deltaTime) {
 
   // Trigger staggered targets if scroll index changed
   if ((isSimpleMode || isAML) && scrollIdx !== -1 && scrollIdx !== lastActiveLineIdx) {
-    updateStaggeredTargets(arr, scrollIdx, lastActiveLineIdx);
+    setLineAnimTargets(arr, scrollIdx);
     lastActiveLineIdx = scrollIdx;
   }
 
@@ -899,63 +885,25 @@ function animateLine(position, deltaTime) {
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
 
-  // First step all line-level staggered animations (with snapping for lines outside window)
-  if (isSimpleMode || isAML) {
-    const isScrolling = isUserScrolling();
-    for (let index = 0; index < arr.length; index++) {
-      const line = arr[index];
-      if (line.AnimatorStoreLine) {
-        let curY, curOp, curBlur;
-        if (line.AnimatorStoreLine.Blur.normalGoal !== undefined) {
-          line.AnimatorStoreLine.Blur.SetGoal(isScrolling ? 0 : line.AnimatorStoreLine.Blur.normalGoal);
-        }
-        if (index >= startIdx && index < endIdx) {
-          curY = line.AnimatorStoreLine.Y.Step(deltaTime);
-          curOp = line.AnimatorStoreLine.Opacity.Step(deltaTime);
-          curBlur = line.AnimatorStoreLine.Blur.Step(deltaTime);
-          line.Snapped = false;
-        } else {
-          if (line.Snapped) {
-            continue;
-          }
-          // Snap instantly if outside active window to prevent stacking
-          curY = line.AnimatorStoreLine.Y.target;
-          line.AnimatorStoreLine.Y.position = curY;
-          line.AnimatorStoreLine.Y.velocity = 0;
-
-          curOp = line.AnimatorStoreLine.Opacity.target;
-          line.AnimatorStoreLine.Opacity.position = curOp;
-          line.AnimatorStoreLine.Opacity.velocity = 0;
-
-          curBlur = line.AnimatorStoreLine.Blur.target;
-          line.AnimatorStoreLine.Blur.position = curBlur;
-          line.AnimatorStoreLine.Blur.velocity = 0;
-          line.Snapped = true;
-        }
-
-        setStyleIfChanged(line.HTMLElement, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
-        setStyleIfChanged(line.HTMLElement, "opacity", curOp.toFixed(3));
-        // Remove blur on hovered lines, skip if negligible
-        const effectiveBlur = line.HTMLElement.matches(':hover') ? 0 : curBlur;
-        if (effectiveBlur > 0.1) {
-          setStyleIfChanged(line.HTMLElement, "filter", `blur(${effectiveBlur.toFixed(1)}px)`);
-        } else {
-          setStyleIfChanged(line.HTMLElement, "filter", 'none');
-        }
-      }
-    }
-  }
-
-  // Sync credits translation with the last line's translation to prevent overlap
+  // Credits move with container scroll, no additional transform needed
   const lastLine = arr[arr.length - 1];
   if (lastLine) {
     const creditsEl = lastLine.HTMLElement.parentElement?.querySelector(".Credits");
     if (creditsEl) {
-      if ((isSimpleMode || isAML) && lastLine.AnimatorStoreLine) {
-        const curY = lastLine.AnimatorStoreLine.Y.position;
-        setStyleIfChanged(creditsEl, "transform", `translate3d(0, ${curY.toFixed(2)}px, 0)`);
-      } else {
-        creditsEl.style.removeProperty("transform");
+      creditsEl.style.removeProperty("transform");
+    }
+  }
+
+  // If user is scrolling, cancel any ongoing --ty stagger animation
+  if (isUserScrolling()) {
+    if (_tyRafId) { cancelAnimationFrame(_tyRafId); _tyRafId = null; }
+    for (const line of arr) {
+      const el = line.HTMLElement;
+      if (el && el.style.getPropertyValue('--ty')) {
+        el.style.removeProperty('--ty');
+        el.style.removeProperty('--stagger-delay');
+        el.style.removeProperty('--blur-amount');
+        line._baseY = 0;
       }
     }
   }
@@ -980,7 +928,7 @@ function animateLine(position, deltaTime) {
 
     if (wordEl) {
       if (lineActive) {
-        const pct = getProgressPercentage(position, line.StartTime, line.EndTime);
+        const pct = isAML ? getAMLProgress(line.HTMLElement, position, line.StartTime, line.EndTime) : getProgressPercentage(position, line.StartTime, line.EndTime);
         const gradientPos = -20 + 120 * pct;
         if (isSimpleMode) {
           setStyleIfChanged(wordEl, "text-shadow", "0 0 10px color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), 0.264) 40%, rgba(255,255,255,0.264))", 0.1);
@@ -1095,4 +1043,8 @@ export function resetAnimator() {
   blurringLastLine = null;
   lastFrameTime = performance.now();
   _styleCache = new WeakMap();
+  if (_tyRafId) { cancelAnimationFrame(_tyRafId); _tyRafId = null; }
+  _finishAnimMap.clear();
+  _lastPosition = 0;
+  _lastSeekTime = 0;
 }

@@ -86,19 +86,24 @@
    ═══════════════════════════════════════════════ */
 
 :root {
-  --SpicyLyrics-LineSpacing: 1cqw 0;
+  --SpicyLyrics-LineSpacing: 0 1cqw 25px;
 }
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line {
   --font-size: var(--DefaultLyricsSize);
   display: block;
   text-align: center;
+  opacity: 0.35;
+  filter: blur(var(--blur-amount, 0px));
+  transform: translateY(var(--ty, 0px));
+  scale: 0.98;
+  transform-origin: left center;
+  margin-bottom: 25px !important;
   transition:
-    opacity 0.2s cubic-bezier(0.61, 1, 0.88, 1),
-    margin-top 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    margin-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    scale 0.5s cubic-bezier(0.0, 0.0, 0.2, 1.0) var(--stagger-delay, 0s),
+    opacity 0.5s cubic-bezier(0.0, 0.0, 0.2, 1.0) var(--stagger-delay, 0s),
+    filter 0.5s cubic-bezier(0.0, 0.0, 0.2, 1.0) var(--stagger-delay, 0s);
   font-size: var(--font-size) !important;
-  will-change: transform, opacity;
 }
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line .word,
@@ -151,7 +156,13 @@
   text-align: start;
 }
 
-/* ── Active Line Gradient ── */
+/* ── Active Line ── */
+#SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active {
+  opacity: 1;
+  scale: 1;
+  transition: none;
+}
+
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .word,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .letter,
