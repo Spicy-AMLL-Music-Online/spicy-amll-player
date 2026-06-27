@@ -638,3 +638,16 @@
     transform-origin: right center !important;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   GPU Acceleration Hack — Hardware Acceleration Hack
+   ═══════════════════════════════════════════════ */
+/* When enabled, promote all word/letter elements to GPU compositor layers.
+   Without this, only .Active elements get will-change via CSS. */
+
+.sl-hw-accel #SpicyLyricsPage .LyricsContainer .LyricsContent .line .word,
+.sl-hw-accel #SpicyLyricsPage .LyricsContainer .LyricsContent .line .letter,
+.sl-hw-accel #SpicyLyricsPage .LyricsContainer .LyricsContent .line .letterGroup {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}

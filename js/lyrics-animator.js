@@ -541,8 +541,8 @@ function animateSyllable(position, deltaTime) {
         const pct = getProgressPercentage(position, word.StartTime, word.EndTime);
         const targetGradientPos = -20 + 120 * pct;
 
-        // GPU acceleration hack for AML lift
-        if (!word._gpuPromoted) {
+        // GPU acceleration hack for AML lift — only promote active/nearby elements to avoid layer explosion
+        if (settingsManager.get("hardwareAccelerationHack") && !word._gpuPromoted) {
           promoteToGPU(word.HTMLElement);
           word._gpuPromoted = true;
         }
@@ -571,7 +571,7 @@ function animateSyllable(position, deltaTime) {
             const letterSung = position > letter.EndTime;
 
             // GPU acceleration hack for letter lift
-            if (!letter._gpuPromoted) {
+            if (settingsManager.get("hardwareAccelerationHack") && !letter._gpuPromoted) {
               promoteToGPU(letter.HTMLElement);
               letter._gpuPromoted = true;
             }
