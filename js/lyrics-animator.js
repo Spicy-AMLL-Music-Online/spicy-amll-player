@@ -186,7 +186,7 @@ function updateStaggeredTargets(arr, activeIndex, previousActiveIndex) { // hell
         line._opacityHoldTimeout = setTimeout(() => {
           if (line.AnimatorStoreLine) {
             line.AnimatorStoreLine.baseOpacity = 0.35;
-            if (!((isAML || isAML_lyrics) && line.BGLine)) {
+            if (!((settingsManager.get("amlAnimation") || settingsManager.get("amlLyricsAnimations")) && line.BGLine)) {
               line.AnimatorStoreLine.Opacity.SetGoal(0.35);
               const finalBlur = dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8);
               line.AnimatorStoreLine.Blur.SetGoal(isUserScrolling() ? 0 : finalBlur);
