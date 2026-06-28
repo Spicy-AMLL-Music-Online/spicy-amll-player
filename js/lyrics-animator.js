@@ -153,7 +153,14 @@ function setLineAnimTargets(arr, activeIndex) {
     el.style.setProperty('--stagger-delay', `${delay}s`);
 
     const dist = i - activeIndex;
-    el.style.setProperty('--blur-amount', isVisible ? `${dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8)}px` : '0px');
+    let blurDist = dist;
+    if (line.BGLine || line.DotLine) {
+      for (let p = i - 1; p >= 0; p--) {
+        if (!arr[p].BGLine && !arr[p].DotLine) { blurDist = p - activeIndex; break; }
+      }
+    }
+    const blur = blurDist === 0 ? 0 : Math.min(Math.abs(blurDist) * 2, 8);
+    el.style.setProperty('--blur-amount', isVisible ? `${blur}px` : '0px');
 
     line._baseY = targetTyVal;
   }
@@ -373,13 +380,17 @@ function animateSyllable(position, deltaTime) {
 
   // Pass 1: Update status classes for ALL lines
   let activeIdx = -1;
+  let scrollActiveIdx = -1;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
     const status = line.Status || (position >= line.StartTime && position <= line.EndTime ? "Active" : (position > line.EndTime ? "Sung" : "NotSung"));
-    if (status === "Active") activeIdx = i;
+    if (status === "Active") {
+      activeIdx = i;
+      if (!line.BGLine && !line.DotLine) scrollActiveIdx = i;
+    }
   }
 
-  // Keep last active line active if no line is active during a gap
+  // Keep last scroll-active line if no line is active during a gap
   if (activeIdx === -1 && lastActiveLineIdx !== -1 && lastActiveLineIdx !== null && lastActiveLineIdx !== undefined && lastActiveLineIdx < arr.length) {
     if (position >= arr[0].StartTime) {
       activeIdx = lastActiveLineIdx;
@@ -407,15 +418,21 @@ function animateSyllable(position, deltaTime) {
   const isAML_lyrics = settingsManager.get("amlLyricsAnimations");
 
   // Advance scroll focus: at half-gap for gaps > 0.5s, or immediately on sung
-  let scrollIdx = activeIdx;
-  if ((isSimpleMode || isAML || isAML_lyrics) && activeIdx !== -1 && activeIdx + 1 < arr.length) {
-    const curLineEnd = arr[activeIdx].EndTime;
-    const nextLineStart = arr[activeIdx + 1].StartTime;
-    const gap = nextLineStart - curLineEnd;
-    if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
-      scrollIdx = activeIdx + 1;
-    } else if (gap <= 0.5 && position > curLineEnd) {
-      scrollIdx = activeIdx + 1;
+  let scrollIdx = scrollActiveIdx;
+  if ((isSimpleMode || isAML || isAML_lyrics) && scrollActiveIdx !== -1) {
+    let nextIdx = -1;
+    for (let i = scrollActiveIdx + 1; i < arr.length; i++) {
+      if (!arr[i].BGLine && !arr[i].DotLine) { nextIdx = i; break; }
+    }
+    if (nextIdx !== -1) {
+      const curLineEnd = arr[scrollActiveIdx].EndTime;
+      const nextLineStart = arr[nextIdx].StartTime;
+      const gap = nextLineStart - curLineEnd;
+      if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
+        scrollIdx = nextIdx;
+      } else if (gap <= 0.5 && position > curLineEnd) {
+        scrollIdx = nextIdx;
+      }
     }
   }
 
@@ -441,26 +458,6 @@ function animateSyllable(position, deltaTime) {
         el.style.removeProperty('--blur-amount');
         line._baseY = 0;
       }
-    }
-  }
-
-  // BG line per-frame dynamic adjustment
-  for (let index = 0; index < arr.length; index++) {
-    const line = arr[index];
-    if (line._lineIndex === undefined) continue;
-    if (!line.BGLine) continue;
-    const el = line.HTMLElement;
-    if (!el) continue;
-
-    const dist = index - _activeLineIndex;
-    const isBgActive = (isAML || isAML_lyrics) && position >= line.StartTime && position <= line.EndTime;
-    const baseY = dist * 25;
-    if (isBgActive) {
-      el.style.transform = `translate3d(0, ${baseY}px, 0) scale(1)`;
-      el.style.opacity = '1';
-    } else {
-      el.style.transform = `translate3d(0, ${baseY - 18}px, 0) scale(0.98)`;
-      el.style.opacity = '0';
     }
   }
 
@@ -900,13 +897,17 @@ function animateLine(position, deltaTime) {
   const isSimpleMode = settingsManager.get("simpleLyricsMode");
   const isAML = settingsManager.get("amlAnimation");
   let activeIdx = -1;
+  let scrollActiveIdx = -1;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
     const isAct = position >= line.StartTime && position <= line.EndTime;
-    if (isAct) activeIdx = i;
+    if (isAct) {
+      activeIdx = i;
+      if (!line.BGLine && !line.DotLine) scrollActiveIdx = i;
+    }
   }
 
-  // Keep last active line active if no line is active during a gap
+  // Keep last scroll-active line active if no line is active during a gap
   if (activeIdx === -1 && lastActiveLineIdx !== -1 && lastActiveLineIdx !== null && lastActiveLineIdx !== undefined && lastActiveLineIdx < arr.length) {
     if (position >= arr[0].StartTime) {
       activeIdx = lastActiveLineIdx;
@@ -928,15 +929,21 @@ function animateLine(position, deltaTime) {
   }
 
   // Advance scroll focus: at half-gap for gaps > 0.5s, or immediately on sung
-  let scrollIdx = activeIdx;
-  if ((isSimpleMode || isAML) && activeIdx !== -1 && activeIdx + 1 < arr.length) {
-    const curLineEnd = arr[activeIdx].EndTime;
-    const nextLineStart = arr[activeIdx + 1].StartTime;
-    const gap = nextLineStart - curLineEnd;
-    if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
-      scrollIdx = activeIdx + 1;
-    } else if (gap <= 0.5 && position > curLineEnd) {
-      scrollIdx = activeIdx + 1;
+  let scrollIdx = scrollActiveIdx;
+  if ((isSimpleMode || isAML) && scrollActiveIdx !== -1) {
+    let nextIdx = -1;
+    for (let i = scrollActiveIdx + 1; i < arr.length; i++) {
+      if (!arr[i].BGLine && !arr[i].DotLine) { nextIdx = i; break; }
+    }
+    if (nextIdx !== -1) {
+      const curLineEnd = arr[scrollActiveIdx].EndTime;
+      const nextLineStart = arr[nextIdx].StartTime;
+      const gap = nextLineStart - curLineEnd;
+      if (gap > 0.5 && position > curLineEnd + gap * 0.5) {
+        scrollIdx = nextIdx;
+      } else if (gap <= 0.5 && position > curLineEnd) {
+        scrollIdx = nextIdx;
+      }
     }
   }
 

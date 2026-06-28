@@ -442,7 +442,7 @@
    ═══════════════════════════════════════════════ */
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.musical-line {
-  transition: transform 0.14s, opacity 0.14s !important;
+  transition: transform 0.14s var(--stagger-delay, 0s), opacity 0.14s var(--stagger-delay, 0s) !important;
   position: relative;
   transform-origin: center center !important;
   z-index: -1;
@@ -491,7 +491,7 @@
 }
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.bg-line {
-  margin: -1cqw 0 1cqw !important;
+  margin: -1cqw 1cqw 1cqw !important;
 }
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.bg-line,
