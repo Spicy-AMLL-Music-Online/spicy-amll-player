@@ -312,28 +312,63 @@ function applyBlur(arr, activeIndex) {
 let _lastPosition = 0;
 let _lastSeekTime = 0;
 const _finishAnimMap = new Map();
+const _freezeMap = new Map();
 const FINISH_DURATION = 250;
 const FREEZE_DURATION = 100;
+
+function cubicBezier(p1x, p1y, p2x, p2y) {
+  const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
+  const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by;
+  function sampleX(t) { return ((ax * t + bx) * t + cx) * t; }
+  function sampleY(t) { return ((ay * t + by) * t + cy) * t; }
+  function dX(t) { return (3 * ax * t + 2 * bx) * t + cx; }
+  function solve(x) {
+    let t = x;
+    for (let i = 0; i < 8; i++) {
+      const x2 = sampleX(t) - x;
+      if (Math.abs(x2) < 1e-7) return t;
+      const d = dX(t);
+      if (Math.abs(d) < 1e-7) break;
+      t -= x2 / d;
+    }
+    let l = 0, r = 1, m = x;
+    while (l < r) {
+      const x2 = sampleX(m);
+      if (Math.abs(x2 - x) < 1e-7) return m;
+      if (x > x2) l = m; else r = m;
+      m = (r - l) / 2 + l;
+    }
+    return m;
+  }
+  return (x) => sampleY(solve(x));
+}
+const _bezIn = cubicBezier(0.2, 0.4, 0.58, 1.0);
+const _bezOut = cubicBezier(0.3, 0.0, 0.58, 1.0);
+const _empEasing = (t) => t < 0.5 ? _bezIn(t / 0.5) : 1 - _bezOut((t - 0.5) / 0.5);
+const _empAnims = [];
 
 function getAMLProgress(key, position, startTime, endTime) {
   const now = performance.now();
 
-  // Tap freeze: freeze progress for 100ms after seek
   if (now - _lastSeekTime < FREEZE_DURATION) {
-    const anim = _finishAnimMap.get(key);
-    if (anim) {
-      const elapsed = now - anim.startTime;
-      const t = Math.min(1, elapsed / FINISH_DURATION);
-      return anim.startValue + (1 - anim.startValue) * t;
+    if (!_freezeMap.has(key)) {
+      const anim = _finishAnimMap.get(key);
+      if (anim) {
+        const elapsed = now - anim.startTime;
+        const t = Math.min(1, elapsed / FINISH_DURATION);
+        _freezeMap.set(key, anim.startValue + (1 - anim.startValue) * t);
+      } else {
+        _freezeMap.set(key, position > startTime ? 1 : 0);
+      }
     }
-    return position > startTime ? 1 : 0;
+    return _freezeMap.get(key);
   }
+  _freezeMap.delete(key);
 
   const duration = endTime - startTime;
   if (duration <= 0) return position >= startTime ? 1 : 0;
   const linear = Math.max(0, Math.min(1, (position - startTime) / duration));
 
-  // Rush to 100% over 250ms after endTime
   if (position >= endTime) {
     if (!_finishAnimMap.has(key)) {
       _finishAnimMap.set(key, { startValue: linear, startTime: now });
@@ -527,14 +562,11 @@ function animateSyllable(position, deltaTime) {
         const pct = getAMLProgress(word.HTMLElement, position, word.StartTime, word.EndTime);
         const targetGradientPos = -20 + 120 * pct;
 
-        // GPU acceleration hack for AML lift — only promote active/nearby elements to avoid layer explosion
         if (settingsManager.get("hardwareAccelerationHack") && !word._gpuPromoted) {
           promoteToGPU(word.HTMLElement);
           word._gpuPromoted = true;
         }
 
-        // Lift spring matching Apple Music liftSpringTimingParameters (stiffness=14, damping=7, mass=1)
-        // frequency = sqrt(14)/(2π) ≈ 0.596 Hz, dampingRatio = 7/(2*sqrt(14)) ≈ 0.936
         if (!word._amlYSpring) {
           word._amlYSpring = new Spring(0, 0.596, 0.936);
           word._amlYSpring.SetGoal(0, true);
@@ -556,13 +588,11 @@ function animateSyllable(position, deltaTime) {
             const letterActive = position >= letter.StartTime && position <= letter.EndTime;
             const letterSung = position > letter.EndTime;
 
-            // GPU acceleration hack for letter lift
             if (settingsManager.get("hardwareAccelerationHack") && !letter._gpuPromoted) {
               promoteToGPU(letter.HTMLElement);
               letter._gpuPromoted = true;
             }
 
-            // Same slow lift spring for letters
             if (!letter._amlYSpring) {
               letter._amlYSpring = new Spring(0, 0.596, 0.936);
               letter._amlYSpring.SetGoal(0, true);
@@ -570,7 +600,6 @@ function animateSyllable(position, deltaTime) {
             letter._amlYSpring.SetGoal((letterActive || letterSung) ? -2 : 0);
             const letterY = letter._amlYSpring.Step(deltaTime);
 
-            // Letters always get normal scale/no glow — emphasis pulse is word-level (word.Emphasis)
             setStyleIfChanged(letter.HTMLElement, "scale", "1");
             setStyleIfChanged(letter.HTMLElement, "transform", `translate3d(0, ${letterY.toFixed(2)}px, 0)`);
             setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", "0px");
@@ -579,6 +608,65 @@ function animateSyllable(position, deltaTime) {
             setStyleIfChanged(letter.HTMLElement, "--gradient-position", `${letterGradientPos.toFixed(2)}%`);
           });
         }
+
+        if (word.Emphasis && word.Letters) {
+          if (!word._empInit) {
+            word._empInit = true;
+            const wordDur = Math.max(1000, word.EndTime - word.StartTime);
+            let amount = wordDur / 2000;
+            amount = (amount > 1 ? Math.sqrt(amount) : amount ** 3) * 0.6;
+            amount = Math.min(1.2, amount);
+            let blur = wordDur / 3000;
+            blur = (blur > 1 ? Math.sqrt(blur) : blur ** 3) * 0.5;
+            blur = Math.min(0.8, blur);
+            const isLastWord = wi === line.Syllables.Lead.length - 1;
+            if (isLastWord) {
+              amount = Math.min(1.2, amount * 1.6);
+              blur = Math.min(0.8, blur * 1.5);
+            }
+            const anchorCount = Math.max(1, word.Letters.length);
+
+            word.Letters.forEach((letter, li) => {
+              if (!letter.Emphasis) return;
+              const de = Math.max(0, letter.StartTime - word.StartTime);
+              const du = Math.max(1000, letter.EndTime - letter.StartTime);
+              const delay = de + (du / 2.5 / anchorCount) * li;
+
+              const frames = [];
+              for (let j = 0; j < 32; j++) {
+                const x = (j + 1) / 32;
+                const ef = _empEasing(x);
+                const offX = -ef * 0.03 * amount * (word.Letters.length / 2 - li);
+                const offY = -ef * 0.025 * amount;
+                frames.push({
+                  offset: x,
+                  transform: `scale(${1 + ef * 0.1 * amount}) translate(${offX}em, ${offY}em)`,
+                  textShadow: `0 0 ${Math.min(0.3, blur * 0.3)}em rgba(255,255,255,${ef * blur})`,
+                });
+              }
+
+              const anim = letter.HTMLElement.animate(frames, {
+                duration: wordDur,
+                delay,
+                fill: "both",
+                composite: "add",
+              });
+              anim.pause();
+              _empAnims.push(anim);
+              letter._empAnim = anim;
+            });
+          }
+
+          word.Letters.forEach(letter => {
+            if (letter._empAnim) {
+              const t = Math.max(0, position - word.StartTime);
+              letter._empAnim.currentTime = t;
+              if (t > 0 && t < word.EndTime - word.StartTime) letter._empAnim.play();
+              else letter._empAnim.pause();
+            }
+          });
+        }
+
         continue;
       }
 
@@ -1045,6 +1133,9 @@ export function resetAnimator() {
   _styleCache = new WeakMap();
   if (_tyRafId) { cancelAnimationFrame(_tyRafId); _tyRafId = null; }
   _finishAnimMap.clear();
+  _freezeMap.clear();
   _lastPosition = 0;
   _lastSeekTime = 0;
+  _empAnims.forEach(a => a.cancel());
+  _empAnims.length = 0;
 }
