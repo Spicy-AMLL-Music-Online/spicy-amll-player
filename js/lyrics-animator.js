@@ -102,13 +102,52 @@ let _tyRafId = null;
 // specs.swift: mass=1, stiffness=100, damping=18
 const SPRING_W0 = 10;
 const SPRING_ZETA = 0.9;
-const SPRING_WD = SPRING_W0 * Math.sqrt(1 - SPRING_ZETA * SPRING_ZETA);
 
-function springPos(t, start, end) {
-  const decay = Math.exp(-SPRING_ZETA * SPRING_W0 * t);
-  const cosTerm = Math.cos(SPRING_WD * t);
-  const sinTerm = (SPRING_ZETA / Math.sqrt(1 - SPRING_ZETA * SPRING_ZETA)) * Math.sin(SPRING_WD * t);
+function springPos(t, start, end, w0 = SPRING_W0, zeta = SPRING_ZETA) {
+  const wd = w0 * Math.sqrt(1 - zeta * zeta);
+  const decay = Math.exp(-zeta * w0 * t);
+  const cosTerm = Math.cos(wd * t);
+  const sinTerm = (zeta / Math.sqrt(1 - zeta * zeta)) * Math.sin(wd * t);
   return end + (start - end) * decay * (cosTerm + sinTerm);
+}
+
+// Persistent spring state — RAF never restarts, just updates targets
+let _springArr = null;
+let _springStartTy = 0;
+let _springEndTy = 0;
+let _springStartTime = 0;
+let _springDelays = null;
+let _springMaxDelay = 0;
+let _springUpdateStart = 0;
+let _springUpdateEnd = 0;
+
+function tickTy() {
+  const elapsed = (performance.now() - _springStartTime) / 1000;
+  const arr = _springArr;
+  if (!arr) { _tyRafId = null; return; }
+
+  for (let i = _springUpdateStart; i < _springUpdateEnd; i++) {
+    const el = arr[i]?.HTMLElement;
+    if (!el) continue;
+    const d = _springDelays?.[i];
+    if (d === undefined) continue;
+    const lineT = elapsed - d;
+    const ty = lineT <= 0 ? _springStartTy : springPos(lineT, _springStartTy, _springEndTy);
+    el.style.setProperty('--ty', `${ty}px`);
+  }
+
+  // Check if spring settled within 0.5px
+  const slowestT = elapsed - _springMaxDelay;
+  if (elapsed > 10 || (slowestT > 0 && Math.abs(springPos(slowestT, _springStartTy, _springEndTy) - _springEndTy) < 0.5)) {
+    for (let i = 0; i < arr.length; i++) {
+      const el = arr[i]?.HTMLElement;
+      if (el) el.style.setProperty('--ty', `${_springEndTy}px`);
+    }
+    _tyRafId = null;
+    return;
+  }
+
+  _tyRafId = requestAnimationFrame(tickTy);
 }
 
 function setLineAnimTargets(arr, activeIndex) {
@@ -165,45 +204,19 @@ function setLineAnimTargets(arr, activeIndex) {
     line._baseY = targetTyVal;
   }
 
-  // specs.swift spring per line with stagger
-  if (_tyRafId) cancelAnimationFrame(_tyRafId);
+  // Update persistent spring state — RAF keeps running, no restart
+  _springArr = arr;
+  _springStartTy = currentTyVal;
+  _springEndTy = targetTyVal;
+  _springStartTime = performance.now();
+  _springDelays = delays;
+  _springMaxDelay = maxDelay;
+  _springUpdateStart = Math.max(0, firstVisible);
+  _springUpdateEnd = Math.min(arr.length, firstVisible + visibleRange * 2 + 5);
 
-  const startTy = currentTyVal;
-  const endTy = targetTyVal;
-  const startTime = performance.now();
-
-  // Only animate lines within the visible range + buffer for performance
-  const updateStart = Math.max(0, firstVisible);
-  const updateEnd = Math.min(arr.length, firstVisible + visibleRange * 2 + 5);
-
-  function tick() {
-    const elapsed = (performance.now() - startTime) / 1000;
-
-    for (let i = updateStart; i < updateEnd; i++) {
-      const el = arr[i]?.HTMLElement;
-      if (!el) continue;
-      const d = delays[i];
-      if (d === undefined) continue;
-      const lineT = elapsed - d;
-      const ty = lineT <= 0 ? startTy : springPos(lineT, startTy, endTy);
-      el.style.setProperty('--ty', `${ty}px`);
-    }
-
-    // Check if spring settled within 0.5px
-    const slowestT = elapsed - maxDelay;
-    if (elapsed > 10 || (slowestT > 0 && Math.abs(springPos(slowestT, startTy, endTy) - endTy) < 0.5)) {
-      for (let i = 0; i < arr.length; i++) {
-        const el = arr[i]?.HTMLElement;
-        if (el) el.style.setProperty('--ty', `${endTy}px`);
-      }
-      _tyRafId = null;
-      return;
-    }
-
-    _tyRafId = requestAnimationFrame(tick);
+  if (!_tyRafId) {
+    _tyRafId = requestAnimationFrame(tickTy);
   }
-
-  _tyRafId = requestAnimationFrame(tick);
 }
 
 function easeSinOut(x) {
@@ -517,13 +530,9 @@ function animateSyllable(position, deltaTime) {
         const pct = getAMLProgress(word.HTMLElement, position, word.StartTime, word.EndTime);
 
         if (!word._fadeInfo) {
-          const elW = word.HTMLElement.offsetWidth;
-          word._fadeInfo = {
-            w: Math.max(elW, 1),
-            fs: parseFloat(getComputedStyle(word.HTMLElement).fontSize),
-          };
+          word._fadeInfo = { w: Math.max(word.HTMLElement.offsetWidth, 1) };
         }
-        const fadePct = ((word._fadeInfo.fs * 0.5) / word._fadeInfo.w) * 100;
+        const fadePct = (40 / word._fadeInfo.w) * 100;
         const targetGradientPos = -fadePct + (100 + fadePct) * pct;
 
         if (settingsManager.get("hardwareAccelerationHack") && !word._gpuPromoted) {
@@ -551,13 +560,9 @@ function animateSyllable(position, deltaTime) {
             const letterPct = getAMLProgress(letter.HTMLElement, position, letter.StartTime, letter.EndTime);
 
             if (!letter._fadeInfo) {
-              const lW = letter.HTMLElement.offsetWidth;
-              letter._fadeInfo = {
-                w: Math.max(lW, 1),
-                fs: parseFloat(getComputedStyle(letter.HTMLElement).fontSize),
-              };
+              letter._fadeInfo = { w: Math.max(letter.HTMLElement.offsetWidth, 1) };
             }
-            const lFadePct = ((letter._fadeInfo.fs * 0.5) / letter._fadeInfo.w) * 100;
+            const lFadePct = (40 / letter._fadeInfo.w) * 100;
             const letterGradientPos = -lFadePct + (100 + lFadePct) * letterPct;
             const letterActive = position >= letter.StartTime && position <= letter.EndTime;
             const letterSung = position > letter.EndTime;
@@ -722,6 +727,9 @@ function animateSyllable(position, deltaTime) {
         if (word.LetterGroup && word.Letters) {
           word.Letters.forEach((letter, k) => {
             const letterState = getElementState(position, letter.StartTime, letter.EndTime);
+            const lPct = letterState === "Sung" ? 1 : (letterState === "Active" ? (position - letter.StartTime) / (letter.EndTime - letter.StartTime) : 0);
+            const letterGp = -20 + 120 * Math.max(0, Math.min(1, lPct));
+            setStyleIfChanged(letter.HTMLElement, "--gradient-position", `${letterGp.toFixed(2)}%`);
             if (letterState === "Active") {
               setStyleIfChanged(letter.HTMLElement, "text-shadow", "0 0 8px color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), 0.264) 40%, rgba(255,255,255,0.264))", 0.1);
               setStyleIfChanged(letter.HTMLElement, "opacity", "1", 0.01);
