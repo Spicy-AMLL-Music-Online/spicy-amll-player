@@ -309,12 +309,6 @@ function applyBlur(arr, activeIndex) {
   }
 }
 
-let _lastPosition = 0;
-let _lastSeekTime = 0;
-const _finishAnimMap = new Map();
-const _freezeMap = new Map();
-const FINISH_DURATION = 250;
-const FREEZE_DURATION = 100;
 
 function cubicBezier(p1x, p1y, p2x, p2y) {
   const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
@@ -348,39 +342,9 @@ const _empEasing = (t) => t < 0.5 ? _bezIn(t / 0.5) : 1 - _bezOut((t - 0.5) / 0.
 const _empAnims = [];
 
 function getAMLProgress(key, position, startTime, endTime) {
-  const now = performance.now();
-
-  if (now - _lastSeekTime < FREEZE_DURATION) {
-    if (!_freezeMap.has(key)) {
-      const anim = _finishAnimMap.get(key);
-      if (anim) {
-        const elapsed = now - anim.startTime;
-        const t = Math.min(1, elapsed / FINISH_DURATION);
-        _freezeMap.set(key, anim.startValue + (1 - anim.startValue) * t);
-      } else {
-        _freezeMap.set(key, position > startTime ? 1 : 0);
-      }
-    }
-    return _freezeMap.get(key);
-  }
-  _freezeMap.delete(key);
-
   const duration = endTime - startTime;
   if (duration <= 0) return position >= startTime ? 1 : 0;
-  const linear = Math.max(0, Math.min(1, (position - startTime) / duration));
-
-  if (position >= endTime) {
-    if (!_finishAnimMap.has(key)) {
-      _finishAnimMap.set(key, { startValue: linear, startTime: now });
-    }
-    const anim = _finishAnimMap.get(key);
-    const elapsed = now - anim.startTime;
-    const t = Math.min(1, elapsed / FINISH_DURATION);
-    return anim.startValue + (1 - anim.startValue) * t;
-  }
-
-  _finishAnimMap.delete(key);
-  return linear;
+  return Math.max(0, Math.min(1, (position - startTime) / duration));
 }
 
 /**
@@ -393,12 +357,6 @@ export function animateLyrics(position, lyricsType, skip = false) {
   const now = performance.now();
   const deltaTime = (now - lastFrameTime) / 1000;
   lastFrameTime = now;
-
-  // Seek/tap detection: large position jump means user seeked
-  if (Math.abs(position - _lastPosition) > 1000) {
-    _lastSeekTime = now;
-  }
-  _lastPosition = position;
 
   if (skip || !lyricsType || lyricsType === "None" || lyricsType === "Static") return;
 
@@ -1132,10 +1090,6 @@ export function resetAnimator() {
   lastFrameTime = performance.now();
   _styleCache = new WeakMap();
   if (_tyRafId) { cancelAnimationFrame(_tyRafId); _tyRafId = null; }
-  _finishAnimMap.clear();
-  _freezeMap.clear();
-  _lastPosition = 0;
-  _lastSeekTime = 0;
   _empAnims.forEach(a => a.cancel());
   _empAnims.length = 0;
 }
