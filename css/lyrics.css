@@ -169,7 +169,7 @@
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.static {
   background-image: linear-gradient(var(--gradient-degrees),
       color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), var(--gradient-alpha)) 7%, rgba(255, 255, 255, var(--gradient-alpha))) var(--gradient-position),
-      color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), var(--gradient-alpha-end)) 7%, rgba(255, 255, 255, var(--gradient-alpha-end))) calc(var(--gradient-position) + 20% + var(--gradient-offset)));
+      color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), var(--gradient-alpha-end)) 7%, rgba(255, 255, 255, var(--gradient-alpha-end))) calc(var(--gradient-position) + var(--gradient-fade-width, 20%) + var(--gradient-offset)));
 }
 
 /* ── NotSung State ── */

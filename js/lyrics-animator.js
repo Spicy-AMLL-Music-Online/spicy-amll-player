@@ -518,7 +518,16 @@ function animateSyllable(position, deltaTime) {
 
       if (isAML_lyrics) {
         const pct = getAMLProgress(word.HTMLElement, position, word.StartTime, word.EndTime);
-        const targetGradientPos = -20 + 120 * pct;
+
+        if (!word._fadeInfo) {
+          const elW = word.HTMLElement.offsetWidth;
+          word._fadeInfo = {
+            w: Math.max(elW, 1),
+            fs: parseFloat(getComputedStyle(word.HTMLElement).fontSize),
+          };
+        }
+        const fadePct = ((word._fadeInfo.fs * 0.5) / word._fadeInfo.w) * 100;
+        const targetGradientPos = -fadePct + (100 + fadePct) * pct;
 
         if (settingsManager.get("hardwareAccelerationHack") && !word._gpuPromoted) {
           promoteToGPU(word.HTMLElement);
@@ -538,11 +547,21 @@ function animateSyllable(position, deltaTime) {
         setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", "0%");
 
         setStyleIfChanged(word.HTMLElement, "--gradient-position", `${targetGradientPos.toFixed(2)}%`);
+        setStyleIfChanged(word.HTMLElement, "--gradient-fade-width", `${fadePct.toFixed(2)}%`);
 
         if (word.Letters) {
           word.Letters.forEach(letter => {
             const letterPct = getAMLProgress(letter.HTMLElement, position, letter.StartTime, letter.EndTime);
-            const letterGradientPos = -20 + 120 * letterPct;
+
+            if (!letter._fadeInfo) {
+              const lW = letter.HTMLElement.offsetWidth;
+              letter._fadeInfo = {
+                w: Math.max(lW, 1),
+                fs: parseFloat(getComputedStyle(letter.HTMLElement).fontSize),
+              };
+            }
+            const lFadePct = ((letter._fadeInfo.fs * 0.5) / letter._fadeInfo.w) * 100;
+            const letterGradientPos = -lFadePct + (100 + lFadePct) * letterPct;
             const letterActive = position >= letter.StartTime && position <= letter.EndTime;
             const letterSung = position > letter.EndTime;
 
@@ -564,6 +583,7 @@ function animateSyllable(position, deltaTime) {
             setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", "0%");
 
             setStyleIfChanged(letter.HTMLElement, "--gradient-position", `${letterGradientPos.toFixed(2)}%`);
+            setStyleIfChanged(letter.HTMLElement, "--gradient-fade-width", `${lFadePct.toFixed(2)}%`);
           });
         }
 
