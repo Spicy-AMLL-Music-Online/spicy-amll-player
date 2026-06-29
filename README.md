@@ -42,7 +42,7 @@ We didn't just build a player — we built a stage for your music.
 
 **No installation. No complexity. Just your music.**
 
-1.  **Launch**: Visit the [Official Site](https://spicy-amll-player.netlify.app).
+1.  **Launch**: Visit the [Official Site](https://spicyamll.online).
 2.  **Play**: Drag and drop your audio files (MP3/FLAC) and optional lyrics (.ttml) or just play from the Apple Music Catalog!
 3.  **Immerse**: Sit back and watch your music transform.
 
