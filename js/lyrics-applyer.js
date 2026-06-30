@@ -348,8 +348,8 @@ export function applySyllableLyrics(data, lyricsContentEl) {
       const displayText = settingsManager.get("trimSyllableSpaces") ? rawText.trim() : rawText;
       const totalDuration = convertTime(lead.EndTime) - convertTime(lead.StartTime);
       const isEmphasized = wordEmphasisMask[iL];
-      const isFirstMerged = isEmphasized && (iL === 0 || wordEmphasisMask[iL - 1] !== true);
-      const isLastMerged = isEmphasized && (iL === aL.length - 1 || wordEmphasisMask[iL + 1] !== true);
+      const isFirstMerged = isEmphasized && (iL === 0 || wordEmphasisMask[iL - 1] !== true || !aL[iL - 1]?.IsPartOfWord);
+      const isLastMerged = isEmphasized && (iL === aL.length - 1 || wordEmphasisMask[iL + 1] !== true || !lead.IsPartOfWord);
 
       let word;
       let lettersData = null;
@@ -537,8 +537,8 @@ export function applySyllableLyrics(data, lyricsContentEl) {
           const displayBgText = settingsManager.get("trimSyllableSpaces") ? rawBgText.trim() : rawBgText;
           const totalDuration = convertTime(bw.EndTime) - convertTime(bw.StartTime);
           const isEmphasized = bgWordEmphasisMask[bI];
-          const isFirstMergedBg = isEmphasized && (bI === 0 || bgWordEmphasisMask[bI - 1] !== true);
-          const isLastMergedBg = isEmphasized && (bI === bA.length - 1 || bgWordEmphasisMask[bI + 1] !== true);
+          const isFirstMergedBg = isEmphasized && (bI === 0 || bgWordEmphasisMask[bI - 1] !== true || !bA[bI - 1]?.IsPartOfWord);
+          const isLastMergedBg = isEmphasized && (bI === bA.length - 1 || bgWordEmphasisMask[bI + 1] !== true || !bw.IsPartOfWord);
 
           let bwE;
           let lettersData = null;
