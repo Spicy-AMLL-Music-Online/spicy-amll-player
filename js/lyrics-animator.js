@@ -11,7 +11,7 @@ import { isUserScrolling } from './scroll-manager.js';
 import { settingsManager } from './settings-manager.js';
 
 // Detect mobile/tablet for performance tuning
-const _isMobile = /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent) || window.innerWidth <= 768;
+const checkIsMobile = () => /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
 // ── Spline Ranges ──
 const ScaleRange = [
@@ -168,7 +168,7 @@ function setLineAnimTargets(arr, activeIndex) {
   const containerRect = scrollContainer.getBoundingClientRect();
   const naturalLineTop = elementRect.top - containerRect.top - currentTyVal;
 
-  const targetTyVal = (containerHeight * 0.28) - naturalLineTop;
+  const targetTyVal = (containerHeight * (checkIsMobile() ? 0.13 : 0.31)) - naturalLineTop;
 
   const lineTotal = lineHeight + 25;
   const visibleRange = Math.ceil(containerHeight / lineTotal) + 3;
@@ -456,9 +456,9 @@ function animateSyllable(position, deltaTime) {
   }
 
   const searchIdx = scrollIdx !== -1 ? scrollIdx : (lastActiveLineIdx || 0);
-  const offsetSearch = _isMobile ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
+  const offsetSearch = checkIsMobile() ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
   const startIdx = Math.max(0, searchIdx - offsetSearch);
-  const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
+  const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (checkIsMobile() ? 3 : 5));
 
   // If user is scrolling, cancel any ongoing --ty stagger animation
   if (isUserScrolling()) {
@@ -621,7 +621,7 @@ function animateSyllable(position, deltaTime) {
                 frames.push({
                   offset: x,
                   transform: `scale(${1 + ef * 0.1 * amount}) translate(${offX}em, ${offY}em)`,
-                  textShadow: `0 0 ${Math.min(0.3, blur * 0.3)}em rgba(255,255,255,${ef * blur})`,
+                  textShadow: `0 0 ${0.25 + ef * 0.45}em rgba(var(--ArtworkGlowColor, 255, 255, 255), ${ef * blur * 0.5})`,
                 });
               }
 
@@ -715,27 +715,51 @@ function animateSyllable(position, deltaTime) {
       }
 
       if (isSimpleMode) {
+        if (!word._simpleModeGpuPromoted) {
+          promoteToGPU(word.HTMLElement);
+          word._simpleModeGpuPromoted = true;
+        }
+
+        const pct = getProgressPercentage(position, word.StartTime, word.EndTime);
+        let gradientPos;
         if (wordActive) {
-          // Subtle glow focus for simple mode
-          setStyleIfChanged(word.HTMLElement, "text-shadow", "0 0 10px color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), 0.264) 40%, rgba(255,255,255,0.264))", 0.1);
-          setStyleIfChanged(word.HTMLElement, "opacity", "1", 0.01);
+          gradientPos = -20 + 120 * pct;
+        } else if (wordSung) {
+          gradientPos = 100;
         } else {
-          setStyleIfChanged(word.HTMLElement, "text-shadow", "none");
-          setStyleIfChanged(word.HTMLElement, "opacity", "0.5", 0.01);
+          gradientPos = -20;
+        }
+
+        if (!word.LetterGroup) {
+          setStyleIfChanged(word.HTMLElement, "--gradient-position", `${gradientPos.toFixed(2)}%`);
+        }
+
+        if (wordActive || wordSung) {
+          setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius", "10px");
+          setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", "26.4%");
+        } else {
+          setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius", "0px");
+          setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity", "0%");
         }
 
         if (word.LetterGroup && word.Letters) {
-          word.Letters.forEach((letter, k) => {
+          word.Letters.forEach((letter) => {
+            if (!letter._simpleModeGpuPromoted) {
+              promoteToGPU(letter.HTMLElement);
+              letter._simpleModeGpuPromoted = true;
+            }
+
             const letterState = getElementState(position, letter.StartTime, letter.EndTime);
             const lPct = letterState === "Sung" ? 1 : (letterState === "Active" ? (position - letter.StartTime) / (letter.EndTime - letter.StartTime) : 0);
             const letterGp = -20 + 120 * Math.max(0, Math.min(1, lPct));
             setStyleIfChanged(letter.HTMLElement, "--gradient-position", `${letterGp.toFixed(2)}%`);
-            if (letterState === "Active") {
-              setStyleIfChanged(letter.HTMLElement, "text-shadow", "0 0 8px color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), 0.264) 40%, rgba(255,255,255,0.264))", 0.1);
-              setStyleIfChanged(letter.HTMLElement, "opacity", "1", 0.01);
+
+            if (letterState === "Active" || letterState === "Sung") {
+              setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", "8px");
+              setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", "26.4%");
             } else {
-              setStyleIfChanged(letter.HTMLElement, "text-shadow", "none");
-              setStyleIfChanged(letter.HTMLElement, "opacity", "0.5", 0.01);
+              setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius", "0px");
+              setStyleIfChanged(letter.HTMLElement, "--text-shadow-opacity", "0%");
             }
           });
         }
@@ -962,9 +986,9 @@ function animateLine(position, deltaTime) {
   }
 
   const searchIdx = scrollIdx !== -1 ? scrollIdx : (lastActiveLineIdx || 0);
-  const offsetSearch = _isMobile ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
+  const offsetSearch = checkIsMobile() ? (isSimpleMode ? 6 : 3) : (isSimpleMode ? 10 : 5);
   const startIdx = Math.max(0, searchIdx - offsetSearch);
-  const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (_isMobile ? 3 : 5));
+  const endIdx = Math.min(arr.length, searchIdx + offsetSearch + (checkIsMobile() ? 3 : 5));
 
   // Credits move with container scroll, no additional transform needed
   const lastLine = arr[arr.length - 1];
@@ -1008,12 +1032,18 @@ function animateLine(position, deltaTime) {
     const wordEl = line.HTMLElement.querySelector('.word');
 
     if (wordEl) {
+      if (isSimpleMode && !wordEl._gpuPromoted) {
+        promoteToGPU(wordEl);
+        wordEl._gpuPromoted = true;
+      }
+
       if (lineActive) {
         const pct = isAML ? getAMLProgress(line.HTMLElement, position, line.StartTime, line.EndTime) : getProgressPercentage(position, line.StartTime, line.EndTime);
         const gradientPos = -20 + 120 * pct;
         if (isSimpleMode) {
-          setStyleIfChanged(wordEl, "text-shadow", "0 0 10px color-mix(in srgb, rgba(var(--ArtworkGlowColor, 255, 255, 255), 0.264) 40%, rgba(255,255,255,0.264))", 0.1);
-          setStyleIfChanged(wordEl, "opacity", "1", 0.01);
+          setStyleIfChanged(wordEl, "--gradient-position", `${gradientPos.toFixed(2)}%`);
+          setStyleIfChanged(wordEl, "--text-shadow-blur-radius", "10px");
+          setStyleIfChanged(wordEl, "--text-shadow-opacity", "26.4%");
         } else {
           setStyleIfChanged(wordEl, "--gradient-position", `${gradientPos.toFixed(2)}%`);
           if (wordEl.style.textShadow) {
@@ -1022,8 +1052,9 @@ function animateLine(position, deltaTime) {
         }
       } else if (lineSung) {
         if (isSimpleMode) {
-          setStyleIfChanged(wordEl, "text-shadow", "none");
-          setStyleIfChanged(wordEl, "opacity", "0.5", 0.01);
+          setStyleIfChanged(wordEl, "--gradient-position", "100%");
+          setStyleIfChanged(wordEl, "--text-shadow-blur-radius", "0px");
+          setStyleIfChanged(wordEl, "--text-shadow-opacity", "0%");
         } else {
           setStyleIfChanged(wordEl, "--gradient-position", "100%");
           if (wordEl.style.textShadow) {
@@ -1032,8 +1063,9 @@ function animateLine(position, deltaTime) {
         }
       } else {
         if (isSimpleMode) {
-          setStyleIfChanged(wordEl, "text-shadow", "none");
-          setStyleIfChanged(wordEl, "opacity", "0.5", 0.01);
+          setStyleIfChanged(wordEl, "--gradient-position", "-20%");
+          setStyleIfChanged(wordEl, "--text-shadow-blur-radius", "0px");
+          setStyleIfChanged(wordEl, "--text-shadow-opacity", "0%");
         } else {
           setStyleIfChanged(wordEl, "--gradient-position", "-20%");
           if (wordEl.style.textShadow) {

@@ -116,6 +116,8 @@
   background-clip: text;
   position: relative;
   white-space: pre-wrap;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
 
 /* GPU-promote only active and nearby lines to avoid 500+ compositing layers */
@@ -163,7 +165,6 @@
   transition: none;
 }
 
-#SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .word,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .letter,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.static {
@@ -238,7 +239,6 @@
   --text-shadow-opacity: -30%;
 }
 
-#SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .word,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .letter,
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .letterGroup {
