@@ -590,9 +590,12 @@ function animateSyllable(position, deltaTime) {
         }
 
         if (word.Emphasis && word.Letters) {
+          const wStart = word.WordStartTime !== undefined ? word.WordStartTime : word.StartTime;
+          const wEnd = word.WordEndTime !== undefined ? word.WordEndTime : word.EndTime;
+          const wordDur = Math.max(1000, wEnd - wStart);
+
           if (!word._empInit) {
             word._empInit = true;
-            const wordDur = Math.max(1000, word.EndTime - word.StartTime);
             let amount = wordDur / 2000;
             amount = (amount > 1 ? Math.sqrt(amount) : amount ** 3) * 0.6;
             amount = Math.min(1.2, amount);
@@ -604,19 +607,23 @@ function animateSyllable(position, deltaTime) {
               amount = Math.min(1.2, amount * 1.6);
               blur = Math.min(0.8, blur * 1.5);
             }
-            const anchorCount = Math.max(1, word.Letters.length);
 
             word.Letters.forEach((letter, li) => {
               if (!letter.Emphasis) return;
-              const de = Math.max(0, letter.StartTime - word.StartTime);
-              const du = Math.max(1000, letter.EndTime - letter.StartTime);
-              const delay = de + (du / 2.5 / anchorCount) * li;
+
+              const letterIndex = letter.WordLetterIndex !== undefined ? letter.WordLetterIndex : li;
+              const letterCount = letter.WordLetterCount !== undefined ? letter.WordLetterCount : word.Letters.length;
+              const anchorCount = Math.max(1, letterCount);
+
+              const de = letter.WordLetterIndex !== undefined ? 0 : Math.max(0, letter.StartTime - wStart);
+              const du = letter.WordLetterIndex !== undefined ? wordDur : Math.max(1000, letter.EndTime - letter.StartTime);
+              const delay = de + (du / 2.5 / anchorCount) * letterIndex;
 
               const frames = [];
               for (let j = 0; j < 32; j++) {
                 const x = (j + 1) / 32;
                 const ef = _empEasing(x);
-                const offX = -ef * 0.03 * amount * (word.Letters.length / 2 - li);
+                const offX = -ef * 0.03 * amount * (letterCount / 2 - letterIndex);
                 const offY = -ef * 0.025 * amount;
                 frames.push({
                   offset: x,
@@ -639,9 +646,9 @@ function animateSyllable(position, deltaTime) {
 
           word.Letters.forEach(letter => {
             if (letter._empAnim) {
-              const t = Math.max(0, position - word.StartTime);
+              const t = Math.max(0, position - wStart);
               letter._empAnim.currentTime = t;
-              if (t > 0 && t < word.EndTime - word.StartTime) letter._empAnim.play();
+              if (t > 0 && t < wEnd - wStart) letter._empAnim.play();
               else letter._empAnim.pause();
             }
           });
