@@ -628,7 +628,7 @@ function animateSyllable(position, deltaTime) {
                 frames.push({
                   offset: x,
                   transform: `scale(${1 + ef * 0.1 * amount}) translate(${offX}em, ${offY}em)`,
-                  textShadow: `0 0 ${0.25 + ef * 0.45}em rgba(var(--ArtworkGlowColor, 255, 255, 255), ${ef * blur * 0.5})`,
+                  textShadow: `0 0 ${0.4 + ef * (30.0 - 0.4)}pt rgba(255, 255, 255, ${ef * blur * 0.5})`,
                 });
               }
 
